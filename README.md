@@ -2,7 +2,7 @@
 
 Uma plataforma de produtividade acadêmica para organizar estudos, acompanhar o progresso e manter o foco em um só lugar.
 
-O OmniDesk reúne prazos, sessões Pomodoro, flashcards, equipes e estatísticas em uma interface moderna e responsiva. Os dados são salvos localmente no navegador, permitindo que a rotina continue organizada mesmo após fechar a aplicação.
+O OmniDesk reúne prazos, sessões Pomodoro, flashcards, cadernos e estatísticas em uma interface moderna e responsiva. Os dados são salvos localmente no navegador, permitindo que a rotina continue organizada mesmo após fechar a aplicação.
 
 ## Funcionalidades
 
@@ -30,6 +30,7 @@ O OmniDesk reúne prazos, sessões Pomodoro, flashcards, equipes e estatísticas
 - [TypeScript](https://www.typescriptlang.org/)
 - [Vite](https://vite.dev/)
 - [Lucide React](https://lucide.dev/)
+- [Cloudflare Workers](https://developers.cloudflare.com/workers/)
 - CSS responsivo
 
 ## Como executar
@@ -57,7 +58,26 @@ npm run dev      # inicia o servidor de desenvolvimento
 npm run build    # gera a versão de produção
 npm run preview  # visualiza o build de produção
 npm run lint     # verifica a qualidade do código
+npm run deploy   # compila e publica no Cloudflare Workers
 ```
+
+## Deploy no Cloudflare
+
+O projeto usa os Static Assets do Cloudflare Workers e já inclui a configuração necessária em `wrangler.jsonc`.
+
+Para publicar pelo terminal, autentique o Wrangler e execute:
+
+```bash
+npm run deploy
+```
+
+Ao conectar o repositório pelo painel do Cloudflare, use:
+
+- Comando de build: `npm run build`
+- Comando de implantação: `npx wrangler deploy`
+- Caminho raiz: deixe vazio, a menos que o repositório esteja dentro de outra pasta
+
+O fallback de SPA está configurado para que a aplicação continue funcionando ao acessar ou atualizar suas rotas diretamente.
 
 ## Estrutura principal
 
@@ -74,7 +94,17 @@ src/
 
 ## Armazenamento
 
-Atualmente, o OmniDesk é uma aplicação front-end e salva as informações no IndexedDB do navegador. Os dados ficam vinculados ao dispositivo utilizado, mas podem ser transferidos com as funções de exportar e importar backup disponíveis no perfil.
+Atualmente, o OmniDesk é uma aplicação front-end e salva as informações no IndexedDB do navegador. Não há conta remota nem sincronização automática: os dados ficam vinculados ao navegador e dispositivo utilizados, mas podem ser transferidos com as funções de exportar e importar backup disponíveis no perfil.
+
+Limpar os dados do site ou usar uma janela privativa pode apagar o conteúdo local. Exporte backups regularmente para manter uma cópia segura.
+
+## Contribuição
+
+Contribuições são bem-vindas. Abra uma issue para relatar problemas ou sugerir melhorias e, para alterações de código, envie um pull request com uma descrição objetiva do que foi modificado.
+
+## Licença
+
+Distribuído sob a licença MIT. Consulte [LICENSE](LICENSE) para mais informações.
 
 ## Autor
 
