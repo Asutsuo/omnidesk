@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Header from "./components/Header";
 import Navbar, { type PageId } from "./components/Navbar";
 import Onboarding from "./components/Onboarding";
@@ -17,6 +17,8 @@ import Subjects from "./pages/Subjects";
 import SubjectWorkspace from "./pages/SubjectWorkspace";
 import Timer from "./pages/Timer";
 import "./App.css";
+
+const DevTools = import.meta.env.DEV ? lazy(() => import("./dev/DevTools")) : null;
 
 const pageMeta: Record<PageId, { title: string; subtitle: string }> = {
   home: { title: "Olá", subtitle: "Aqui está o seu dia" }, subjects: { title: "Matérias", subtitle: "Seus espaços de aprendizagem" },
@@ -77,10 +79,11 @@ function App() {
     addTeam: (team: Omit<Team, "id">) => setData((current) => current.teams.length >= LIMITS.teams ? current : ({ ...current, teams: [...current.teams, { ...team, members: team.members.slice(0, LIMITS.teamMembers), id: crypto.randomUUID() }] })), removeTeam: (id: string) => setData((current) => ({ ...current, teams: current.teams.filter((team) => team.id !== id) })),
   }), []);
 
-  if (loading) return <div className="app-loading"><span className="loader" /><strong>OmniDesk</strong><p>Preparando seu espaço...</p></div>;
-  if (!data.onboarded) return <Onboarding error={storageError} onComplete={(profile: Profile) => { const next = { ...data, profile, onboarded: true as const }; loaded.current = true; updateData(next); void requestPersistentStorage(); }} onImport={updateData} />;
+  const devTools = DevTools ? <Suspense fallback={null}><DevTools data={data} onApply={updateData} /></Suspense> : null;
+  if (loading) return <><div className="app-loading"><span className="loader" /><strong>OmniDesk</strong><p>Preparando seu espaço...</p></div>{devTools}</>;
+  if (!data.onboarded) return <><Onboarding error={storageError} onComplete={(profile: Profile) => { const next = { ...data, profile, onboarded: true as const }; loaded.current = true; updateData(next); void requestPersistentStorage(); }} onImport={updateData} />{devTools}</>;
   const currentSubject = subjectId ? data.subjects.find((item) => item.id === subjectId) : undefined;
-  if (currentSubject) return <SubjectWorkspace data={data} subjectId={currentSubject.id} mutate={mutate} onBack={() => { setData((current) => pauseRunning(current)); setSubjectId(undefined); }} onTimerStart={timerStart} onTimerUpdate={timerUpdate} onTimerDelete={timerDelete} onTimerComplete={timerComplete} />;
+  if (currentSubject) return <><SubjectWorkspace data={data} subjectId={currentSubject.id} mutate={mutate} onBack={() => { setData((current) => pauseRunning(current)); setSubjectId(undefined); }} onTimerStart={timerStart} onTimerUpdate={timerUpdate} onTimerDelete={timerDelete} onTimerComplete={timerComplete} />{devTools}</>;
 
   const meta = page === "home" ? { ...pageMeta.home, title: `Olá, ${data.profile.name.split(" ")[0]}` } : pageMeta[page]; const globalTimer = data.timers.find((item) => item.scope === "global");
   const content: Record<PageId, React.ReactNode> = {
@@ -93,6 +96,6 @@ function App() {
     equipes: <Equipes teams={data.teams} onAdd={actions.addTeam} onRemove={actions.removeTeam} />, estatisticas: <Estatisticas data={data} />,
     perfil: <Perfil data={data} onSave={(profile) => setData((current) => ({ ...current, profile }))} onTheme={(theme) => setData((current) => ({ ...current, theme }))} onImport={updateData} />,
   };
-  return <div id="app"><Navbar selected={page} onSelect={navigate} onQuickAction={() => setQuickActionOpen(true)} /><section id="content-area"><Header {...meta} initials={data.profile.name.slice(0, 2).toUpperCase()} avatar={data.profile.avatar} onMenu={() => document.body.classList.toggle("nav-open")} />{storageError && <button className="storage-alert" onClick={() => setStorageError("")}>{storageError} ×</button>}{content[page]}</section>{quickActionOpen && <QuickActionModal subjects={data.subjects} onClose={() => setQuickActionOpen(false)} onAddAssignment={actions.addAssignment} onAddChecklist={actions.addChecklist} onAddCard={actions.addCard} onAddSubject={addSubject} />}</div>;
+  return <><div id="app"><Navbar selected={page} onSelect={navigate} onQuickAction={() => setQuickActionOpen(true)} /><section id="content-area"><Header {...meta} initials={data.profile.name.slice(0, 2).toUpperCase()} avatar={data.profile.avatar} onMenu={() => document.body.classList.toggle("nav-open")} />{storageError && <button className="storage-alert" onClick={() => setStorageError("")}>{storageError} ×</button>}{content[page]}</section>{quickActionOpen && <QuickActionModal subjects={data.subjects} onClose={() => setQuickActionOpen(false)} onAddAssignment={actions.addAssignment} onAddChecklist={actions.addChecklist} onAddCard={actions.addCard} onAddSubject={addSubject} />}</div>{devTools}</>;
 }
 export default App;

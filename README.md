@@ -1,45 +1,126 @@
-# OmniDesk
+<div align="center">
+  <img src="public/omnidesk.svg" width="76" alt="Símbolo do OmniDesk" />
 
-Uma plataforma de produtividade acadêmica para organizar estudos, acompanhar o progresso e manter o foco em um só lugar.
+  # OmniDesk
 
-O OmniDesk reúne prazos, sessões Pomodoro, flashcards, cadernos e estatísticas em uma interface moderna e responsiva. Os dados são salvos localmente no navegador, permitindo que a rotina continue organizada mesmo após fechar a aplicação.
+  **Seu espaço de estudos, organizado do seu jeito.**
 
-## Funcionalidades
+  Uma plataforma acadêmica local-first para planejar conteúdos, manter o foco e acompanhar a evolução — sem conta, assinatura ou servidor.
 
-- Dashboard com resumo da rotina, matérias e sessões salvas
-- Atalhos personalizáveis e persistentes na página inicial
-- Espaços por matéria com trabalhos, checklists, timer, cadernos e flashcards
-- Ferramentas globais independentes, com vínculo opcional a matérias
-- Visualização das matérias em lista ou grade
-- Cadastro, edição, conclusão, filtragem e exclusão de trabalhos gerais ou por matéria
-- Checklists globais ou por matéria, com seções, progresso e inclusão em massa
-- Pomodoro 25/5 e cronômetro geral ou vinculado a uma matéria
-- Garantia de apenas um relógio em execução, inclusive entre abas
-- Cadernos com organização, exclusão, anotações e salvamento automático
-- Criação, blocos e revisão interativa de flashcards
-- Visualização de equipes e encontros de estudo
-- Estatísticas de foco, checklists, trabalhos e cartões dominados
-- Perfil editável com objetivo, meta semanal em horas e imagem processada localmente
-- Cinco temas visuais persistentes, incluindo opções claras e escuras
-- Ações rápidas para adicionar prazos e flashcards
-- Persistência local com IndexedDB organizado por coleções
-- Onboarding para configuração do primeiro acesso
-- Exportação e restauração de backup em JSON
-- Aplicação instalável e disponível offline após o primeiro acesso
-- Layout responsivo para desktop, tablet e celular
+  [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+  [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-ec996a.svg)](LICENSE)
 
-## Tecnologias
+  [Acessar aplicação](https://omnidesk.danielgomes132005.workers.dev) · [Instalação](#executando-localmente) · [Como os dados são salvos](#privacidade-e-armazenamento)
+</div>
 
-- [React](https://react.dev/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Vite](https://vite.dev/)
-- [Lucide React](https://lucide.dev/)
-- [Cloudflare Workers](https://developers.cloudflare.com/workers/)
-- CSS responsivo
+---
 
-## Como executar
+<div align="center">
+  <img src="docs/assets/platform-tour.gif" width="900" alt="Demonstração das principais áreas do OmniDesk" />
+</div>
 
-### Pré-requisitos
+## Sobre o projeto
+
+O OmniDesk reúne matérias, projetos, checklists, sessões de foco, flashcards, cadernos e estatísticas em uma interface limpa e responsiva. Ele foi criado para funcionar como uma central de estudos de verdade: cada ferramenta pode ser usada globalmente ou dentro do contexto de uma matéria, sem obrigar o usuário a organizar tudo da mesma maneira.
+
+Todos os dados permanecem no navegador por padrão. A aplicação funciona sem autenticação, continua disponível offline depois do primeiro acesso e oferece backup em JSON para transferência entre dispositivos.
+
+## Principais recursos
+
+| Área | O que oferece |
+| --- | --- |
+| **Matérias** | Espaços independentes com cor, trabalhos, checklists, timer, cadernos e flashcards próprios. |
+| **Trabalhos** | Projetos gerais ou vinculados a uma matéria, com descrição, prazo, prioridade, edição e conclusão. |
+| **Checklists** | Listas gerais ou por matéria, seções reordenáveis, inclusão em massa e acompanhamento de progresso. |
+| **Foco** | Pomodoro 25/5 e cronômetro, tanto no contexto global quanto em cada matéria. |
+| **Cadernos** | Cadernos por matéria, múltiplas anotações, edição automática, renomeação e exclusão. |
+| **Flashcards** | Cartões organizados por blocos, revisão interativa e controle dos cartões dominados. |
+| **Estatísticas** | Histórico diário, evolução semanal, distribuição por contexto e sessões salvas. |
+| **Personalização** | Foto de perfil, atalhos configuráveis e cinco temas pastéis — três claros e dois escuros. |
+| **Dados** | IndexedDB, funcionamento offline, importação e exportação de backups locais. |
+
+## Uma plataforma, cinco atmosferas
+
+O tema altera toda a linguagem visual sem perder a identidade do OmniDesk. Estão disponíveis **OmniDesk Clássico**, **Sálvia Serena**, **Aurora Pastel**, **Noite Atlântica** e **Ameixa Noturna**.
+
+<div align="center">
+  <img src="docs/assets/themes-tour.gif" width="900" alt="Alternância entre os cinco temas visuais do OmniDesk" />
+</div>
+
+## Visão da interface
+
+### Checklists estruturados
+
+Crie seções, mova grupos, classifique itens e transforme várias linhas em uma checklist organizada de uma só vez.
+
+<div align="center">
+  <img src="docs/assets/checklists.png" width="1000" alt="Checklist estruturada no OmniDesk" />
+</div>
+
+<table>
+  <tr>
+    <td width="50%" align="center"><strong>Timer de foco</strong></td>
+    <td width="50%" align="center"><strong>Equipes de estudo</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/assets/timer.png" alt="Pomodoro do OmniDesk" /></td>
+    <td><img src="docs/assets/teams.png" alt="Equipes de estudo no OmniDesk" /></td>
+  </tr>
+</table>
+
+<details>
+  <summary><strong>Ver painel completo de estatísticas</strong></summary>
+  <br />
+  <div align="center">
+    <img src="docs/assets/statistics.png" width="780" alt="Painel completo de estatísticas do OmniDesk" />
+  </div>
+</details>
+
+## Organização global e por matéria
+
+As ferramentas da barra lateral são visões gerais e não dependem da existência de uma matéria. Um trabalho, checklist ou flashcard pode ser criado como conteúdo **Geral** ou receber uma matéria opcional.
+
+Quando existe vínculo, o mesmo item fica disponível em dois lugares:
+
+```text
+Visão global da ferramenta
+└── reúne conteúdos gerais e de todas as matérias
+
+Espaço de uma matéria
+└── exibe apenas o conteúdo vinculado àquela matéria
+```
+
+Isso permite organizar um projeto amplo — como completar um edital — sem inventar uma matéria artificial, enquanto atividades específicas continuam próximas do respectivo conteúdo.
+
+## Sistema de timers
+
+O OmniDesk mantém um timer global e até um estado salvo para cada matéria. O comportamento foi desenhado para evitar sessões simultâneas ou contagens invisíveis:
+
+- Pomodoro configurado inicialmente em 25 minutos de foco e 5 minutos de intervalo.
+- O timer global representa estudos sem contexto específico.
+- Cada matéria preserva seu último Pomodoro ou cronômetro pausado.
+- Somente um relógio pode executar por vez, mesmo entre diferentes abas do navegador.
+- Iniciar outro relógio pausa o anterior automaticamente.
+- Trocar de matéria, ocultar ou fechar a aba tenta pausar e registrar a sessão imediatamente.
+- Checkpoints periódicos reduzem a perda de progresso em encerramentos inesperados.
+- Cronômetros são limitados a 12 horas por sessão.
+
+## Privacidade e armazenamento
+
+O OmniDesk é uma aplicação **local-first**. Não existe conta remota, rastreamento do conteúdo ou sincronização automática.
+
+Os dados são persistidos no IndexedDB e separados em coleções para matérias, trabalhos, checklists, anotações, cartões, timers e estatísticas. Isso evita concentrar todo o perfil em um único registro e mantém as atualizações eficientes conforme o espaço cresce.
+
+> [!IMPORTANT]
+> Os dados pertencem ao navegador e ao dispositivo utilizados. Limpar os dados do site ou usar uma janela privativa pode removê-los. Exporte backups regularmente na página de perfil.
+
+O backup JSON contém o espaço completo e pode ser restaurado em outro navegador. Imagens de perfil também são processadas localmente antes de serem armazenadas.
+
+## Executando localmente
+
+### Requisitos
 
 - Node.js 20 ou superior
 - npm
@@ -53,62 +134,93 @@ npm install
 npm run dev
 ```
 
-Depois, acesse o endereço exibido pelo Vite no terminal — normalmente `http://localhost:5173`.
+Abra o endereço informado pelo Vite, normalmente `http://localhost:5173`.
 
-## Scripts disponíveis
+### Scripts
 
-```bash
-npm run dev      # inicia o servidor de desenvolvimento
-npm run build    # gera a versão de produção
-npm run preview  # visualiza o build de produção
-npm run lint     # verifica a qualidade do código
-npm run deploy   # compila e publica no Cloudflare Workers
-```
+| Comando | Finalidade |
+| --- | --- |
+| `npm run dev` | Inicia o ambiente de desenvolvimento. |
+| `npm run lint` | Executa as verificações do ESLint. |
+| `npm run build` | Valida o TypeScript e gera o bundle de produção. |
+| `npm run preview` | Serve localmente o bundle de produção. |
+| `npm run deploy` | Compila e publica usando o Wrangler. |
+
+## Ferramentas de demonstração
+
+O ambiente iniciado com `npm run dev` inclui um gerador exclusivo para testes, screenshots e GIFs. O botão flutuante permite carregar cenários com conteúdo coerente:
+
+- **Ambiente vazio**
+- **Uso leve**
+- **Concurso em andamento**
+- **Faculdade carregada**
+- **Stress test**
+
+É possível ajustar quantidades, percentual de conclusão, intensidade, período histórico e deslocamento das datas. Uma semente torna os dados reproduzíveis, enquanto o modo apresentação esconde o painel e pausa animações durante as capturas. Use `Ctrl + Shift + D` para reabrir as ferramentas.
+
+O gerador grava tudo em um banco `omnidesk-demo` separado. O perfil local normal permanece intacto e as ferramentas são eliminadas do bundle de produção.
 
 ## Deploy no Cloudflare
 
-O projeto usa os Static Assets do Cloudflare Workers e já inclui a configuração necessária em `wrangler.jsonc`.
-
-Para publicar pelo terminal, autentique o Wrangler e execute:
+O projeto utiliza os Static Assets do Cloudflare Workers e já contém o fallback necessário para uma SPA em [`wrangler.jsonc`](wrangler.jsonc).
 
 ```bash
 npm run deploy
 ```
 
-Ao conectar o repositório pelo painel do Cloudflare, use:
+Ao conectar o repositório pelo painel do Cloudflare, configure:
 
-- Comando de build: `npm run build`
-- Comando de implantação: `npx wrangler deploy`
-- Caminho raiz: deixe vazio, a menos que o repositório esteja dentro de outra pasta
+- **Comando de build:** `npm run build`
+- **Comando de implantação:** `npx wrangler deploy`
+- **Caminho raiz:** vazio, salvo quando o repositório estiver dentro de outra pasta
 
-O fallback de SPA está configurado para que a aplicação continue funcionando ao acessar ou atualizar suas rotas diretamente.
+Como os dados são locais, cada visitante recebe um espaço independente no próprio navegador; nenhum banco remoto precisa ser provisionado para o deploy.
 
-## Estrutura principal
+## Estrutura do projeto
 
 ```text
 src/
-├── components/   # componentes reutilizáveis e navegação
-├── pages/        # páginas e ferramentas da plataforma
-├── App.tsx       # estado global e composição da aplicação
-├── data.ts       # entidades, limites e regras do domínio
-├── storage.ts    # IndexedDB, migração e backups
-├── timerUtils.ts # cálculos seguros dos relógios
-└── index.css     # estilos e variáveis globais
+├── components/     # navegação e componentes reutilizáveis
+├── dev/            # cenários disponíveis apenas no npm run dev
+├── pages/          # páginas e ferramentas da plataforma
+├── App.tsx         # estado, navegação e regras compartilhadas
+├── data.ts         # entidades, normalização e limites do domínio
+├── storage.ts      # IndexedDB, migração e backups
+├── timerUtils.ts   # cálculos e transições seguras dos relógios
+└── index.css       # temas e variáveis globais
 ```
 
-## Armazenamento
+## Tecnologias
 
-Atualmente, o OmniDesk é uma aplicação front-end e salva as informações no IndexedDB do navegador. Não há conta remota nem sincronização automática: os dados ficam vinculados ao navegador e dispositivo utilizados, mas podem ser transferidos com as funções de exportar e importar backup disponíveis no perfil.
+- [React 19](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Vite](https://vite.dev/)
+- [Lucide React](https://lucide.dev/)
+- [IndexedDB](https://developer.mozilla.org/docs/Web/API/IndexedDB_API)
+- [Cloudflare Workers](https://developers.cloudflare.com/workers/)
+- CSS responsivo sem biblioteca visual
 
-Limpar os dados do site ou usar uma janela privativa pode apagar o conteúdo local. Exporte backups regularmente para manter uma cópia segura.
+## Limitações atuais
 
-## Contribuição
+- Não há autenticação ou sincronização automática entre dispositivos.
+- O espaço disponível depende da política de armazenamento do navegador.
+- Backups precisam ser exportados manualmente para transferência ou recuperação externa.
+- A colaboração em equipes é organizacional e local; não há edição compartilhada em tempo real.
 
-Contribuições são bem-vindas. Abra uma issue para relatar problemas ou sugerir melhorias e, para alterações de código, envie um pull request com uma descrição objetiva do que foi modificado.
+## Contribuindo
+
+Issues e pull requests são bem-vindos. Antes de enviar uma alteração:
+
+```bash
+npm run lint
+npm run build
+```
+
+Descreva objetivamente o problema resolvido, as decisões adotadas e, para mudanças visuais, inclua capturas comparativas quando possível.
 
 ## Licença
 
-Distribuído sob a licença MIT. Consulte [LICENSE](LICENSE) para mais informações.
+Distribuído sob a [licença MIT](LICENSE).
 
 ## Autor
 

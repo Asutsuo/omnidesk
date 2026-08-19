@@ -1,13 +1,20 @@
 import { emptyData, isBackupData, normalizeData, type AppData } from "./data";
 
 const DB_NAME = "omnidesk";
+const DEMO_DB_NAME = import.meta.env.DEV ? "omnidesk-demo" : DB_NAME;
+export const DEV_DEMO_KEY = import.meta.env.DEV ? "omnidesk-dev-demo-mode" : "";
 const DB_VERSION = 3;
 const entityStores = ["subjects", "assignments", "flashcards", "notebooks", "notes", "checklists", "checklistSections", "checklistItems", "timers", "stats", "teams"] as const;
 const allStores = ["meta", ...entityStores] as const;
 
-function openDatabase(): Promise<IDBDatabase> {
+export const isDevDemoMode = () => import.meta.env.DEV && localStorage.getItem(DEV_DEMO_KEY) === "1";
+// Fixa o banco durante toda a sessão. Ao sair do modo demo, eventos pagehide ainda
+// gravam no banco demo; a página seguinte então abre o banco normal intacto.
+const ACTIVE_DATABASE_NAME = isDevDemoMode() ? DEMO_DB_NAME : DB_NAME;
+
+function openDatabase(name = ACTIVE_DATABASE_NAME): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(name, DB_VERSION);
     request.onupgradeneeded = () => {
       const database = request.result;
       if (database.objectStoreNames.contains("tasks")) database.deleteObjectStore("tasks");
@@ -48,8 +55,8 @@ export async function loadAppData(): Promise<AppData> {
   return migrated;
 }
 
-export async function saveAppData(data: AppData): Promise<void> {
-  const database = await openDatabase();
+async function saveToDatabase(data: AppData, databaseName = ACTIVE_DATABASE_NAME): Promise<void> {
+  const database = await openDatabase(databaseName);
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction([...allStores], "readwrite");
     const { subjects, assignments, flashcards, notebooks, notes, checklists, checklistSections, checklistItems, timers, stats, teams, ...meta } = data;
@@ -59,6 +66,15 @@ export async function saveAppData(data: AppData): Promise<void> {
     transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); transaction.onabort = () => reject(transaction.error);
   });
   database.close();
+}
+
+export async function saveAppData(data: AppData): Promise<void> {
+  await saveToDatabase(data);
+}
+
+export async function saveDevDemoData(data: AppData): Promise<void> {
+  if (!import.meta.env.DEV) throw new Error("O ambiente de demonstração só existe em desenvolvimento.");
+  await saveToDatabase(normalizeData(data), DEMO_DB_NAME);
 }
 
 export function downloadBackup(data: AppData) {
