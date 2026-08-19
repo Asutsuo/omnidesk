@@ -4,7 +4,7 @@ import Navbar, { type PageId } from "./components/Navbar";
 import Onboarding from "./components/Onboarding";
 import QuickActionModal from "./components/QuickActionModal";
 import { pauseTimer } from "./timerUtils";
-import { emptyData, LIMITS, type AppData, type Checklist, type Flashcard, type Profile, type Subject, type Team, type TimerState } from "./data";
+import { emptyData, LIMITS, type AppData, type Assignment, type Checklist, type Flashcard, type Profile, type Subject, type Team, type TimerState } from "./data";
 import { loadAppData, requestPersistentStorage, saveAppData } from "./storage";
 import Equipes from "./pages/Equipes";
 import Estatisticas from "./pages/Estatisticas";
@@ -71,6 +71,7 @@ function App() {
   const navigate = (next: PageId) => { setData((current) => pauseRunning(current)); setSubjectId(undefined); setPage(next); document.body.classList.remove("nav-open"); };
 
   const actions = useMemo(() => ({
+    addAssignment: (assignment: Omit<Assignment, "id" | "completed">) => setData((current) => current.assignments.length >= LIMITS.assignments || (assignment.subjectId && current.assignments.filter((item) => item.subjectId === assignment.subjectId).length >= LIMITS.assignmentsPerSubject) ? current : ({ ...current, assignments: [{ ...assignment, id: crypto.randomUUID(), completed: false }, ...current.assignments] })),
     addChecklist: (checklist: Pick<Checklist, "title" | "description" | "subjectId">) => setData((current) => current.checklists.length >= LIMITS.checklists || (checklist.subjectId && current.checklists.filter((item) => item.subjectId === checklist.subjectId).length >= LIMITS.checklistsPerSubject) ? current : ({ ...current, checklists: [{ ...checklist, id: crypto.randomUUID(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...current.checklists] })),
     addCard: (card: Omit<Flashcard, "id" | "mastered">) => setData((current) => current.flashcards.length >= LIMITS.flashcards || (card.subjectId && current.flashcards.filter((item) => item.subjectId === card.subjectId).length >= LIMITS.flashcardsPerSubject) ? current : ({ ...current, flashcards: [...current.flashcards, { ...card, id: crypto.randomUUID(), mastered: false }] })), toggleCard: (id: string) => setData((current) => ({ ...current, flashcards: current.flashcards.map((card) => card.id === id ? { ...card, mastered: !card.mastered } : card) })), removeCard: (id: string) => setData((current) => ({ ...current, flashcards: current.flashcards.filter((card) => card.id !== id) })),
     addTeam: (team: Omit<Team, "id">) => setData((current) => current.teams.length >= LIMITS.teams ? current : ({ ...current, teams: [...current.teams, { ...team, members: team.members.slice(0, LIMITS.teamMembers), id: crypto.randomUUID() }] })), removeTeam: (id: string) => setData((current) => ({ ...current, teams: current.teams.filter((team) => team.id !== id) })),
@@ -92,6 +93,6 @@ function App() {
     equipes: <Equipes teams={data.teams} onAdd={actions.addTeam} onRemove={actions.removeTeam} />, estatisticas: <Estatisticas data={data} />,
     perfil: <Perfil data={data} onSave={(profile) => setData((current) => ({ ...current, profile }))} onTheme={(theme) => setData((current) => ({ ...current, theme }))} onImport={updateData} />,
   };
-  return <div id="app"><Navbar selected={page} onSelect={navigate} onQuickAction={() => setQuickActionOpen(true)} /><section id="content-area"><Header {...meta} initials={data.profile.name.slice(0, 2).toUpperCase()} avatar={data.profile.avatar} onMenu={() => document.body.classList.toggle("nav-open")} />{storageError && <button className="storage-alert" onClick={() => setStorageError("")}>{storageError} ×</button>}{content[page]}</section>{quickActionOpen && <QuickActionModal subjects={data.subjects} onClose={() => setQuickActionOpen(false)} onAddChecklist={actions.addChecklist} onAddCard={actions.addCard} onAddSubject={addSubject} />}</div>;
+  return <div id="app"><Navbar selected={page} onSelect={navigate} onQuickAction={() => setQuickActionOpen(true)} /><section id="content-area"><Header {...meta} initials={data.profile.name.slice(0, 2).toUpperCase()} avatar={data.profile.avatar} onMenu={() => document.body.classList.toggle("nav-open")} />{storageError && <button className="storage-alert" onClick={() => setStorageError("")}>{storageError} ×</button>}{content[page]}</section>{quickActionOpen && <QuickActionModal subjects={data.subjects} onClose={() => setQuickActionOpen(false)} onAddAssignment={actions.addAssignment} onAddChecklist={actions.addChecklist} onAddCard={actions.addCard} onAddSubject={addSubject} />}</div>;
 }
 export default App;
