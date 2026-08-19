@@ -1,0 +1,21 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap");
+:root { --default-color:#1e2d4c; --detail-color:#ec996a; --bg-color:#f3f3ee; --surface:#fff; --border-color:#e2e4df; --hover-nav-color:#f7f6f1; --item-color:#7a847c; --text:#27322d; --success:#6d9275; --shadow:0 12px 30px rgba(30,45,76,.07); }
+* { box-sizing:border-box; margin:0; padding:0; }
+html { background:var(--bg-color); }
+body { min-width:320px; min-height:100vh; color:var(--text); font-family:"Inter",system-ui,sans-serif; }
+button,input,select,textarea { font:inherit; }
+button { color:inherit; }
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:3px solid rgba(236,153,106,.35); outline-offset:2px; }
+h1,h2,h3 { color:var(--default-color); }
+.cursiva,h1 { font-family:"Fraunces",serif; }
+.icon-button { display:grid; place-items:center; width:40px; height:40px; border:0; border-radius:10px; background:transparent; cursor:pointer; }
+.icon-button:hover { background:var(--hover-nav-color); }
+.primary-button,.secondary-button { display:inline-flex; align-items:center; justify-content:center; gap:9px; padding:11px 18px; border-radius:10px; border:1px solid var(--default-color); font-weight:600; cursor:pointer; transition:.2s; }
+.primary-button { background:var(--default-color); color:#fff; }
+.primary-button:hover { background:#293b61; transform:translateY(-1px); }
+.secondary-button { background:#fff; color:var(--default-color); }
+input,select,textarea { width:100%; padding:11px 12px; border:1px solid var(--border-color); border-radius:9px; background:#fbfbf8; color:var(--text); }
+textarea { min-height:88px; resize:vertical; }
+label { display:grid; gap:7px; color:#657069; font-size:13px; font-weight:600; }
+.eyebrow { display:inline-flex; align-items:center; gap:6px; color:var(--detail-color); font-size:11px; font-weight:700; letter-spacing:.13em; }
+.muted { color:var(--item-color); font-size:14px; }

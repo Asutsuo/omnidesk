@@ -1,0 +1,9 @@
+import { Camera, Check, GraduationCap, Mail, Target } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import type { Profile } from "../data";
+function Perfil({ profile, onSave }: { profile: Profile; onSave: (profile: Profile) => void }) {
+  const [saved, setSaved] = useState(false); const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); onSave({ name: String(form.get("name")), email: String(form.get("email")), course: String(form.get("course")), weeklyGoal: Number(form.get("weeklyGoal")) }); setSaved(true); window.setTimeout(() => setSaved(false), 2000); };
+  return <main className="page profile-page"><section className="panel profile-card"><div className="profile-cover" /><div className="profile-summary"><div className="profile-avatar">{profile.name.slice(0, 2).toUpperCase()}<button aria-label="Alterar foto"><Camera size={16} /></button></div><div><h2>{profile.name}</h2><p>{profile.course}</p></div></div><form className="profile-form" onSubmit={submit}><label><span><GraduationCap size={17} /> Nome</span><input name="name" defaultValue={profile.name} required /></label><label><span><Mail size={17} /> E-mail</span><input type="email" name="email" defaultValue={profile.email} required /></label><label><span><BookIcon /> Curso</span><input name="course" defaultValue={profile.course} required /></label><label><span><Target size={17} /> Meta semanal (horas)</span><input type="number" min="1" max="80" name="weeklyGoal" defaultValue={profile.weeklyGoal} required /></label><button className="primary-button" type="submit">{saved ? <><Check size={18} /> Salvo</> : "Salvar alterações"}</button></form></section></main>;
+}
+function BookIcon() { return <GraduationCap size={17} />; }
+export default Perfil;

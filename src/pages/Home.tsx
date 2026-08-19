@@ -1,0 +1,15 @@
+import { ArrowRight, BookOpen, CheckCircle2, Clock3, Flame, Timer, Users } from "lucide-react";
+import type { PageId } from "../components/Navbar";
+import type { AppData } from "../data";
+import { TaskRow } from "../components/TaskRow";
+type Props = { data: AppData; onNavigate: (page: PageId) => void; onToggleTask: (id: string) => void };
+function Home({ data, onNavigate, onToggleTask }: Props) {
+  const pending = data.tasks.filter((task) => !task.completed).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const progress = data.tasks.length ? Math.round((data.tasks.filter((t) => t.completed).length / data.tasks.length) * 100) : 0;
+  const formatDate = (value: string) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(`${value}T12:00:00`));
+  return <main className="page"><section className="welcome-card"><div><span className="eyebrow"><Flame size={15} /> CONTINUE ASSIM</span><h2>Um pouco de foco hoje<br />faz uma grande diferença.</h2><p>Você já acumulou <strong>{Math.floor(data.focusMinutes / 60)}h {data.focusMinutes % 60}min</strong> de estudo focado.</p><button className="primary-button" onClick={() => onNavigate("timer")}><Timer size={18} /> Iniciar sessão</button></div><div className="progress-ring" style={{ "--progress": `${progress * 3.6}deg` } as React.CSSProperties}><div><strong>{progress}%</strong><span>concluído</span></div></div></section>
+    <section className="stats-grid"><article className="stat-card"><span className="stat-icon orange"><Clock3 /></span><div><small>Próxima entrega</small><strong>{pending[0] ? formatDate(pending[0].dueDate) : "Tudo em dia"}</strong></div></article><article className="stat-card"><span className="stat-icon blue"><BookOpen /></span><div><small>Flashcards</small><strong>{data.flashcards.length} cartões</strong></div></article><article className="stat-card"><span className="stat-icon green"><Users /></span><div><small>Equipes</small><strong>{data.teams.length} ativas</strong></div></article></section>
+    <section className="dashboard-grid"><article className="panel"><div className="panel-heading"><div><span className="eyebrow">HOJE</span><h3>Seus próximos prazos</h3></div><button className="text-button" onClick={() => onNavigate("prazos")}>Ver todos <ArrowRight size={16} /></button></div><div className="task-list">{pending.slice(0, 3).map((task) => <TaskRow key={task.id} task={task} onToggle={onToggleTask} compact />)}{!pending.length && <div className="empty-state"><CheckCircle2 /><p>Você concluiu tudo por aqui.</p></div>}</div></article>
+    <article className="panel quick-panel"><div className="panel-heading"><div><span className="eyebrow">ATALHOS</span><h3>O que vamos fazer?</h3></div></div><button onClick={() => onNavigate("timer")}><Timer /><span><strong>Focar agora</strong><small>Inicie um ciclo de estudo</small></span><ArrowRight /></button><button onClick={() => onNavigate("flashcards")}><BookOpen /><span><strong>Revisar cartões</strong><small>Teste o que você aprendeu</small></span><ArrowRight /></button></article></section></main>;
+}
+export default Home;

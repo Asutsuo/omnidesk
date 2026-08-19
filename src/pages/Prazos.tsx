@@ -1,0 +1,12 @@
+import { CalendarPlus, ListFilter } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { TaskRow } from "../components/TaskRow";
+import type { Task } from "../data";
+type Props = { tasks: Task[]; onAdd: (task: Omit<Task, "id" | "completed">) => void; onToggle: (id: string) => void; onRemove: (id: string) => void };
+function Prazos({ tasks, onAdd, onToggle, onRemove }: Props) {
+  const [showForm, setShowForm] = useState(false); const [filter, setFilter] = useState<"Todos" | "Pendentes" | "Concluídos">("Todos");
+  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); onAdd({ title: String(form.get("title")), subject: String(form.get("subject")), dueDate: String(form.get("dueDate")), priority: String(form.get("priority")) as Task["priority"] }); event.currentTarget.reset(); setShowForm(false); };
+  const visible = tasks.filter((task) => filter === "Todos" || (filter === "Pendentes" ? !task.completed : task.completed)).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  return <main className="page"><div className="page-toolbar"><div className="filter-group"><ListFilter size={17} />{(["Todos", "Pendentes", "Concluídos"] as const).map((item) => <button className={filter === item ? "active" : ""} onClick={() => setFilter(item)} key={item}>{item}</button>)}</div><button className="primary-button" onClick={() => setShowForm(!showForm)}><CalendarPlus size={18} /> Novo prazo</button></div>{showForm && <form className="inline-form panel" onSubmit={submit}><label>Tarefa<input name="title" placeholder="Ex.: Entregar relatório" required /></label><label>Matéria<input name="subject" placeholder="Ex.: Física" required /></label><label>Entrega<input name="dueDate" type="date" required /></label><label>Prioridade<select name="priority"><option>Média</option><option>Alta</option><option>Baixa</option></select></label><button className="primary-button" type="submit">Adicionar</button></form>}<section className="panel"><div className="panel-heading"><div><span className="eyebrow">AGENDA</span><h3>{visible.length} {visible.length === 1 ? "atividade" : "atividades"}</h3></div></div><div className="task-list full">{visible.map((task) => <TaskRow task={task} onToggle={onToggle} onRemove={onRemove} key={task.id} />)}{!visible.length && <p className="empty-copy">Nenhuma atividade neste filtro.</p>}</div></section></main>;
+}
+export default Prazos;
