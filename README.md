@@ -12,7 +12,9 @@
   [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
   [![License: MIT](https://img.shields.io/badge/License-MIT-ec996a.svg)](LICENSE)
 
-  [Acessar aplicação](https://omnidesk.danielgomes132005.workers.dev) · [Instalação](#executando-localmente) · [Como os dados são salvos](#privacidade-e-armazenamento)
+  **[Usar o OmniDesk agora — sem instalação](https://omnidesk.asutsuo.workers.dev)**
+
+  [Abrir no navegador](https://omnidesk.asutsuo.workers.dev) · [Conhecer os recursos](#principais-recursos) · [Como os dados são salvos](#privacidade-e-armazenamento)
 </div>
 
 ---
@@ -26,6 +28,20 @@
 O OmniDesk reúne matérias, projetos, checklists, sessões de foco, flashcards, cadernos e estatísticas em uma interface limpa e responsiva. Ele foi criado para funcionar como uma central de estudos de verdade: cada ferramenta pode ser usada globalmente ou dentro do contexto de uma matéria, sem obrigar o usuário a organizar tudo da mesma maneira.
 
 Todos os dados permanecem no navegador por padrão. A aplicação funciona sem autenticação, continua disponível offline depois do primeiro acesso e oferece backup em JSON para transferência entre dispositivos.
+
+## Comece agora
+
+Você **não precisa baixar o projeto, instalar programas ou criar uma conta**. Basta abrir o endereço abaixo em um navegador moderno e configurar seu espaço:
+
+<div align="center">
+
+### [Abrir o OmniDesk](https://omnidesk.asutsuo.workers.dev)
+
+`https://omnidesk.asutsuo.workers.dev`
+
+</div>
+
+Seu perfil é criado localmente no primeiro acesso e fica salvo nesse navegador. As instruções de instalação presentes mais abaixo são destinadas somente a desenvolvedores que desejam estudar, modificar ou contribuir com o código.
 
 ## Principais recursos
 
@@ -118,7 +134,9 @@ Os dados são persistidos no IndexedDB e separados em coleções para matérias,
 
 O backup JSON contém o espaço completo e pode ser restaurado em outro navegador. Imagens de perfil também são processadas localmente antes de serem armazenadas.
 
-## Executando localmente
+## Para desenvolvedores: executando localmente
+
+> Esta etapa **não é necessária para utilizar o OmniDesk**. Usuários podem acessar diretamente a [versão online](https://omnidesk.asutsuo.workers.dev).
 
 ### Requisitos
 
