@@ -1,0 +1,10 @@
+{
+  "name": "OmniDesk — Seu espaço de estudos",
+  "short_name": "OmniDesk",
+  "description": "Matérias, prazos, foco, anotações e revisões em um só lugar.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f3ee",
+  "theme_color": "#1e2d4c",
+  "icons": [{ "src": "/omnidesk.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
