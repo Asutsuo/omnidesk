@@ -1,5 +1,3 @@
-Claro. Fiz a edição como um README inteiro, preservando a parte técnica boa, mas removendo as repetições sobre “usar online”, condensando algumas explicações e deixando a progressão mais natural: **o que é → demonstração → recursos → funcionamento → privacidade → desenvolvimento**. Mantive também as regras global/matéria e timers porque agora elas servem como documentação de domínio, não apenas divulgação. 
-
 <div align="center">
   <img src="public/omnidesk.svg" width="76" alt="Símbolo do OmniDesk" />
 
