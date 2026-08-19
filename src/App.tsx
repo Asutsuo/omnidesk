@@ -4,11 +4,12 @@ import Navbar, { type PageId } from "./components/Navbar";
 import Onboarding from "./components/Onboarding";
 import QuickActionModal from "./components/QuickActionModal";
 import { pauseTimer } from "./timerUtils";
-import { emptyData, LIMITS, type AppData, type Flashcard, type Profile, type Subject, type Task, type Team, type TimerState } from "./data";
+import { emptyData, LIMITS, type AppData, type Checklist, type Flashcard, type Profile, type Subject, type Team, type TimerState } from "./data";
 import { loadAppData, requestPersistentStorage, saveAppData } from "./storage";
 import Equipes from "./pages/Equipes";
 import Estatisticas from "./pages/Estatisticas";
 import Flashcards from "./pages/Flashcards";
+import Checklists from "./pages/Checklists";
 import Home from "./pages/Home";
 import Perfil from "./pages/Perfil";
 import Prazos from "./pages/Prazos";
@@ -19,7 +20,7 @@ import "./App.css";
 
 const pageMeta: Record<PageId, { title: string; subtitle: string }> = {
   home: { title: "Olá", subtitle: "Aqui está o seu dia" }, subjects: { title: "Matérias", subtitle: "Seus espaços de aprendizagem" },
-  prazos: { title: "Prazos", subtitle: "Trabalhos e tarefas em um só lugar" }, timer: { title: "Timer", subtitle: "Uma sessão de estudo geral" },
+  prazos: { title: "Trabalhos", subtitle: "Projetos, entregas e prazos importantes" }, checklists: { title: "Checklists", subtitle: "Organize conteúdos e acompanhe cada etapa" }, timer: { title: "Timer", subtitle: "Uma sessão de estudo geral" },
   flashcards: { title: "Flashcards", subtitle: "Revise cartões de todas as matérias" }, equipes: { title: "Equipes", subtitle: "Organize seus grupos de estudo" },
   estatisticas: { title: "Estatísticas", subtitle: "Acompanhe sua evolução" }, perfil: { title: "Seu perfil", subtitle: "Preferências, dados e backup" },
 };
@@ -45,6 +46,7 @@ function App() {
   const [data, setData] = useState<AppData>(emptyData); const [loading, setLoading] = useState(true); const [storageError, setStorageError] = useState(""); const [quickActionOpen, setQuickActionOpen] = useState(false);
   const loaded = useRef(false); const dataRef = useRef(data); const tabId = useRef(crypto.randomUUID()); const suppressNextSave = useRef(false);
   useEffect(() => { dataRef.current = data; }, [data]);
+  useEffect(() => { if (!loaded.current) return; document.documentElement.dataset.theme = data.theme; localStorage.setItem("omnidesk-theme", data.theme); const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]'); if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue("--default-color").trim(); }, [data.theme]);
   useEffect(() => { loadAppData().then((stored) => { setData(stored); loaded.current = true; setLoading(false); }).catch(() => { setStorageError("Não foi possível acessar o armazenamento deste navegador."); setLoading(false); }); }, []);
   useEffect(() => { if (!loaded.current) return; if (suppressNextSave.current) { suppressNextSave.current = false; return; } const timeout = window.setTimeout(() => saveAppData(data).catch(() => setStorageError("Não foi possível salvar a última alteração.")), 180); return () => clearTimeout(timeout); }, [data]);
 
@@ -61,7 +63,7 @@ function App() {
   const mutate = useCallback((updater: (data: AppData) => AppData) => setData(updater), []);
   const updateData = useCallback((next: AppData) => { const paused = pauseRunning(next); setData(paused); void saveAppData(paused).catch(() => setStorageError("Não foi possível salvar os dados.")); }, []);
   const addSubject = useCallback((subject: Omit<Subject, "id" | "createdAt">) => setData((current) => current.subjects.length >= LIMITS.subjects ? current : ({ ...current, subjects: [...current.subjects, { ...subject, id: crypto.randomUUID(), createdAt: new Date().toISOString() }] })), []);
-  const removeSubject = useCallback((id: string) => setData((current) => ({ ...current, subjects: current.subjects.filter((item) => item.id !== id), tasks: current.tasks.filter((item) => item.subjectId !== id), assignments: current.assignments.filter((item) => item.subjectId !== id), flashcards: current.flashcards.filter((item) => item.subjectId !== id), notebooks: current.notebooks.filter((item) => item.subjectId !== id), notes: current.notes.filter((item) => item.subjectId !== id), timers: current.timers.filter((item) => item.subjectId !== id), stats: current.stats.filter((item) => item.subjectId !== id) })), []);
+  const removeSubject = useCallback((id: string) => setData((current) => { const checklistIds = new Set(current.checklists.filter((item) => item.subjectId === id).map((item) => item.id)); return { ...current, subjects: current.subjects.filter((item) => item.id !== id), assignments: current.assignments.filter((item) => item.subjectId !== id), checklists: current.checklists.filter((item) => item.subjectId !== id), checklistSections: current.checklistSections.filter((item) => !checklistIds.has(item.checklistId)), checklistItems: current.checklistItems.filter((item) => !checklistIds.has(item.checklistId)), flashcards: current.flashcards.filter((item) => item.subjectId !== id), notebooks: current.notebooks.filter((item) => item.subjectId !== id), notes: current.notes.filter((item) => item.subjectId !== id), timers: current.timers.filter((item) => item.subjectId !== id), stats: current.stats.filter((item) => item.subjectId !== id) }; }), []);
   const timerUpdate = useCallback((timer: TimerState) => setData((current) => timer.status === "paused" ? recordTimerProgress(current, timer) : ({ ...current, timers: replaceTimer(current.timers, timer) })), []);
   const timerStart = useCallback((timer: TimerState) => { localStorage.setItem("omnidesk-active-timer", `${tabId.current}:${timer.id}:${Date.now()}`); setData((current) => { const paused = pauseRunning(current, timer.id); return { ...paused, timers: replaceTimer(paused.timers, timer) }; }); }, []);
   const timerDelete = useCallback((id: string) => setData((current) => ({ ...current, timers: current.timers.filter((item) => item.id !== id) })), []);
@@ -69,8 +71,7 @@ function App() {
   const navigate = (next: PageId) => { setData((current) => pauseRunning(current)); setSubjectId(undefined); setPage(next); document.body.classList.remove("nav-open"); };
 
   const actions = useMemo(() => ({
-    addTask: (task: Omit<Task, "id" | "completed">) => setData((current) => current.tasks.length >= LIMITS.tasks || (task.subjectId && current.tasks.filter((item) => item.subjectId === task.subjectId).length >= LIMITS.tasksPerSubject) ? current : ({ ...current, tasks: [{ ...task, id: crypto.randomUUID(), completed: false }, ...current.tasks] })),
-    toggleTask: (id: string) => setData((current) => ({ ...current, tasks: current.tasks.map((task) => task.id === id ? { ...task, completed: !task.completed } : task) })), removeTask: (id: string) => setData((current) => ({ ...current, tasks: current.tasks.filter((task) => task.id !== id) })),
+    addChecklist: (checklist: Pick<Checklist, "title" | "description" | "subjectId">) => setData((current) => current.checklists.length >= LIMITS.checklists || (checklist.subjectId && current.checklists.filter((item) => item.subjectId === checklist.subjectId).length >= LIMITS.checklistsPerSubject) ? current : ({ ...current, checklists: [{ ...checklist, id: crypto.randomUUID(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, ...current.checklists] })),
     addCard: (card: Omit<Flashcard, "id" | "mastered">) => setData((current) => current.flashcards.length >= LIMITS.flashcards || (card.subjectId && current.flashcards.filter((item) => item.subjectId === card.subjectId).length >= LIMITS.flashcardsPerSubject) ? current : ({ ...current, flashcards: [...current.flashcards, { ...card, id: crypto.randomUUID(), mastered: false }] })), toggleCard: (id: string) => setData((current) => ({ ...current, flashcards: current.flashcards.map((card) => card.id === id ? { ...card, mastered: !card.mastered } : card) })), removeCard: (id: string) => setData((current) => ({ ...current, flashcards: current.flashcards.filter((card) => card.id !== id) })),
     addTeam: (team: Omit<Team, "id">) => setData((current) => current.teams.length >= LIMITS.teams ? current : ({ ...current, teams: [...current.teams, { ...team, members: team.members.slice(0, LIMITS.teamMembers), id: crypto.randomUUID() }] })), removeTeam: (id: string) => setData((current) => ({ ...current, teams: current.teams.filter((team) => team.id !== id) })),
   }), []);
@@ -82,14 +83,15 @@ function App() {
 
   const meta = page === "home" ? { ...pageMeta.home, title: `Olá, ${data.profile.name.split(" ")[0]}` } : pageMeta[page]; const globalTimer = data.timers.find((item) => item.scope === "global");
   const content: Record<PageId, React.ReactNode> = {
-    home: <Home data={data} onNavigate={navigate} onOpenSubject={setSubjectId} onToggleTask={actions.toggleTask} />,
+    home: <Home data={data} onNavigate={navigate} onOpenSubject={setSubjectId} mutate={mutate} />,
     subjects: <Subjects data={data} onOpen={setSubjectId} onAdd={addSubject} onRemove={removeSubject} onViewChange={(subjectView) => setData((current) => ({ ...current, subjectView }))} />,
-    prazos: <Prazos data={data} mutate={mutate} onAdd={actions.addTask} onToggle={actions.toggleTask} onRemove={actions.removeTask} />,
+    prazos: <Prazos data={data} mutate={mutate} />,
+    checklists: <Checklists data={data} mutate={mutate} />,
     timer: <Timer timer={globalTimer} onStart={timerStart} onUpdate={timerUpdate} onDelete={timerDelete} onComplete={timerComplete} />,
     flashcards: <Flashcards cards={data.flashcards} subjects={data.subjects} onAdd={actions.addCard} onToggleMastered={actions.toggleCard} onRemove={actions.removeCard} />,
     equipes: <Equipes teams={data.teams} onAdd={actions.addTeam} onRemove={actions.removeTeam} />, estatisticas: <Estatisticas data={data} />,
-    perfil: <Perfil data={data} onSave={(profile) => setData((current) => ({ ...current, profile }))} onImport={updateData} />,
+    perfil: <Perfil data={data} onSave={(profile) => setData((current) => ({ ...current, profile }))} onTheme={(theme) => setData((current) => ({ ...current, theme }))} onImport={updateData} />,
   };
-  return <div id="app"><Navbar selected={page} onSelect={navigate} onQuickAction={() => setQuickActionOpen(true)} /><section id="content-area"><Header {...meta} initials={data.profile.name.slice(0, 2).toUpperCase()} onMenu={() => document.body.classList.toggle("nav-open")} />{storageError && <button className="storage-alert" onClick={() => setStorageError("")}>{storageError} ×</button>}{content[page]}</section>{quickActionOpen && <QuickActionModal subjects={data.subjects} onClose={() => setQuickActionOpen(false)} onAddTask={actions.addTask} onAddCard={actions.addCard} onAddSubject={addSubject} />}</div>;
+  return <div id="app"><Navbar selected={page} onSelect={navigate} onQuickAction={() => setQuickActionOpen(true)} /><section id="content-area"><Header {...meta} initials={data.profile.name.slice(0, 2).toUpperCase()} avatar={data.profile.avatar} onMenu={() => document.body.classList.toggle("nav-open")} />{storageError && <button className="storage-alert" onClick={() => setStorageError("")}>{storageError} ×</button>}{content[page]}</section>{quickActionOpen && <QuickActionModal subjects={data.subjects} onClose={() => setQuickActionOpen(false)} onAddChecklist={actions.addChecklist} onAddCard={actions.addCard} onAddSubject={addSubject} />}</div>;
 }
 export default App;

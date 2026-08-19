@@ -1,7 +1,7 @@
-import { BarChart3, BookOpen, Clock3, GraduationCap, Home, Menu, Plus, Timer, UserRound, Users, X } from "lucide-react";
+import { BarChart3, BookOpen, CheckSquare2, Clock3, GraduationCap, Home, Menu, Plus, Timer, UserRound, Users, X } from "lucide-react";
 import "./Navbar.css";
-export type PageId = "home" | "subjects" | "prazos" | "timer" | "flashcards" | "equipes" | "estatisticas" | "perfil";
-const navItems = [{ id: "home", label: "Home", icon: Home }, { id: "subjects", label: "Matérias", icon: GraduationCap }, { id: "prazos", label: "Prazos", icon: Clock3 }, { id: "timer", label: "Timer", icon: Timer }, { id: "flashcards", label: "Flashcards", icon: BookOpen }, { id: "equipes", label: "Equipes", icon: Users }, { id: "estatisticas", label: "Estatísticas", icon: BarChart3 }, { id: "perfil", label: "Perfil", icon: UserRound }] as const;
+export type PageId = "home" | "subjects" | "prazos" | "checklists" | "timer" | "flashcards" | "equipes" | "estatisticas" | "perfil";
+const navItems = [{ id: "home", label: "Home", icon: Home }, { id: "subjects", label: "Matérias", icon: GraduationCap }, { id: "prazos", label: "Trabalhos", icon: Clock3 }, { id: "checklists", label: "Checklists", icon: CheckSquare2 }, { id: "timer", label: "Timer", icon: Timer }, { id: "flashcards", label: "Flashcards", icon: BookOpen }, { id: "equipes", label: "Equipes", icon: Users }, { id: "estatisticas", label: "Estatísticas", icon: BarChart3 }, { id: "perfil", label: "Perfil", icon: UserRound }] as const;
 type Props = { selected: PageId; onSelect: (page: PageId) => void; onQuickAction: () => void };
 function Navbar({ selected, onSelect, onQuickAction }: Props) {
   const select = (id: PageId) => { onSelect(id); document.body.classList.remove("nav-open"); };

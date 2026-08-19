@@ -7,16 +7,19 @@ O OmniDesk reúne prazos, sessões Pomodoro, flashcards, cadernos e estatística
 ## Funcionalidades
 
 - Dashboard com resumo da rotina, matérias e sessões salvas
-- Espaços por matéria com trabalhos, tarefas, timer, cadernos e flashcards
+- Atalhos personalizáveis e persistentes na página inicial
+- Espaços por matéria com trabalhos, checklists, timer, cadernos e flashcards
 - Visualização das matérias em lista ou grade
-- Cadastro, conclusão, filtragem e exclusão de prazos
+- Cadastro, conclusão, filtragem e exclusão de trabalhos
+- Checklists globais ou por matéria, com seções, progresso e inclusão em massa
 - Pomodoro 25/5 e cronômetro geral ou vinculado a uma matéria
 - Garantia de apenas um relógio em execução, inclusive entre abas
-- Cadernos com anotações e salvamento automático
+- Cadernos com organização, exclusão, anotações e salvamento automático
 - Criação, blocos e revisão interativa de flashcards
 - Visualização de equipes e encontros de estudo
-- Estatísticas de foco, tarefas e cartões dominados
-- Perfil editável com meta semanal
+- Estatísticas de foco, checklists, trabalhos e cartões dominados
+- Perfil editável com objetivo, meta semanal em horas e imagem processada localmente
+- Cinco temas visuais persistentes, incluindo opções claras e escuras
 - Ações rápidas para adicionar prazos e flashcards
 - Persistência local com IndexedDB organizado por coleções
 - Onboarding para configuração do primeiro acesso
