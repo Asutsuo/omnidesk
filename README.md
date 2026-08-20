@@ -26,7 +26,7 @@ Uma plataforma acadêmica local-first para planejar conteúdos, manter o foco e 
 
 ## Sobre o projeto
 
-O OmniDesk reúne matérias, trabalhos, checklists, sessões de foco, flashcards, cadernos e estatísticas em uma interface limpa e responsiva.
+O OmniDesk reúne matérias, trabalhos, checklists, sessões de foco, flashcards, cadernos, materiais, questões, simulados e estatísticas em uma interface limpa e responsiva.
 
 A organização é baseada em **matérias**, que funcionam como espaços independentes de estudo. Ao mesmo tempo, as ferramentas também possuem visões globais, permitindo organizar conteúdos que pertencem a uma disciplina específica ou objetivos mais amplos sem impor uma única forma de estudo.
 
@@ -36,14 +36,16 @@ Os dados permanecem no próprio navegador por padrão. A aplicação funciona se
 
 | Área               | O que oferece                                                                                                              |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| **Matérias**       | Espaços independentes com cor, trabalhos, checklists, timer, cadernos e flashcards próprios.                               |
+| **Matérias**       | Espaços independentes com trabalhos, checklists, timer, cadernos, materiais, flashcards e questões próprios.               |
 | **Trabalhos**      | Projetos gerais ou vinculados a uma matéria, com descrição, prazo, prioridade, edição e conclusão.                         |
 | **Checklists**     | Listas gerais ou por matéria, seções reordenáveis, movimentação de itens, inclusão em massa e acompanhamento de progresso. |
-| **Foco**           | Pomodoro configurável e cronômetro, tanto no contexto global quanto em cada matéria.                                       |
+| **Foco**           | Pomodoro e cronômetro global ou por matéria, com persistência e widget flutuante.                                           |
 | **Cadernos**       | Cadernos por matéria, múltiplas anotações, salvamento automático, renomeação e exclusão.                                   |
 | **Flashcards**     | Cartões organizados por blocos, revisão interativa e controle dos cartões dominados.                                       |
-| **Estatísticas**   | Histórico diário, evolução semanal, distribuição por contexto, metas e sessões de estudo.                                  |
-| **Personalização** | Atalhos configuráveis e cinco temas pastéis — três claros e dois escuros.                                                  |
+| **Biblioteca**     | Links para vídeos, PDFs, artigos, documentos e pastas, organizados em coleções e tags.                                      |
+| **Questões**       | Banco pesquisável, importação em texto, simulados, correção, notas e revisão do gabarito.                                   |
+| **Estatísticas**   | Evolução, distribuição, metas, sessões e desempenho em questões e simulados.                                               |
+| **Personalização** | Avatar, capa, atalhos configuráveis e sete temas — quatro claros e três escuros.                                            |
 | **Dados**          | IndexedDB, funcionamento offline e importação/exportação de backups locais.                                                |
 
 ## Visão da interface
@@ -75,7 +77,7 @@ Crie seções, reorganize grupos, mova itens e transforme várias linhas de text
   </div>
 </details>
 
-## Uma plataforma, cinco atmosferas
+## Uma plataforma, sete atmosferas
 
 Os temas alteram a atmosfera visual sem abandonar a identidade do OmniDesk.
 
@@ -84,11 +86,13 @@ Estão disponíveis:
 * **OmniDesk Clássico**
 * **Sálvia Serena**
 * **Aurora Pastel**
+* **Duna Celeste**
 * **Noite Atlântica**
 * **Ameixa Noturna**
+* **Eclipse**
 
 <div align="center">
-  <img src="docs/assets/themes-tour.gif" width="900" alt="Alternância entre os cinco temas visuais do OmniDesk" />
+  <img src="docs/assets/themes-tour.gif" width="900" alt="Demonstração dos temas visuais do OmniDesk" />
 </div>
 
 ## Organização global e por matéria
@@ -131,12 +135,14 @@ Vários timers podem permanecer salvos e pausados, mas **somente um pode executa
 O sistema segue algumas regras para preservar a consistência das sessões:
 
 * O timer global representa estudos sem contexto específico.
-* Cada matéria pode preservar seu último Pomodoro ou cronômetro pausado.
+* Cada matéria preserva seu último Pomodoro ou cronômetro.
 * Iniciar outro timer pausa automaticamente o que estiver em execução.
-* Trocar de matéria, ocultar ou fechar a aba tenta pausar e registrar a sessão imediatamente.
-* Checkpoints periódicos reduzem a perda de progresso em encerramentos inesperados.
+* Navegar pelo OmniDesk, trocar de aba ou minimizar o navegador não interrompe a sessão.
+* Um widget animado acompanha o relógio, pode ser arrastado, ocultado, pausado ou aberto em seu contexto.
+* Ao pausar pelo widget, ele se recolhe em um indicador discreto que pode ser restaurado.
+* Timestamps e checkpoints reconstroem o tempo após recarregamentos e encerramentos inesperados.
 * O cálculo utiliza timestamps em vez de depender apenas dos intervalos visuais do navegador.
-* Timers carregados ou restaurados de backups são normalizados para o estado pausado.
+* Ao alcançar zero ou o limite máximo, o relógio pausa e registra a sessão.
 
 ## Checklists e inclusão em massa
 
@@ -164,6 +170,16 @@ Também são reconhecidos formatos comuns de checkbox, como `□`, `☐` e `- [ 
 
 Itens podem ser concluídos, editados, reordenados e movidos entre seções, enquanto o progresso total da checklist é atualizado automaticamente.
 
+## Biblioteca e materiais
+
+A Biblioteca reúne referências externas sem armazenar arquivos pesados no OmniDesk. Vídeos, PDFs, artigos, documentos, pastas e outros links podem receber matéria, coleção, descrição e tags. Links encontrados nas anotações dos cadernos também podem ser enviados diretamente para a Biblioteca.
+
+## Questões e simulados
+
+O banco de questões aceita cadastro manual e importação estruturada em texto, com organização por matéria, coleção, categoria, instituição, ano e fonte. Busca e filtros ajudam a selecionar conteúdos para modelos de simulados.
+
+Os simulados podem embaralhar questões e alternativas, definir nota mínima, salvar tentativas incompletas e corrigir apenas após a entrega. O histórico preserva as questões utilizadas e permite revisar respostas, gabarito e comentários mesmo que o banco seja alterado posteriormente.
+
 ## Estatísticas
 
 O OmniDesk registra o progresso de estudo ao longo do tempo e diferencia, quando aplicável, atividades gerais das vinculadas a matérias.
@@ -180,6 +196,7 @@ O painel acompanha informações como:
 * Distribuição do estudo por matéria;
 * Conteúdos e sessões gerais;
 * Dias com e sem registro de estudo.
+* Média de acertos, nota média, metas atingidas e desempenho por categoria em simulados.
 
 O tempo é contabilizado progressivamente para evitar que períodos já registrados sejam somados novamente quando uma sessão é pausada e retomada.
 
@@ -187,7 +204,7 @@ O tempo é contabilizado progressivamente para evitar que períodos já registra
 
 O OmniDesk é uma aplicação **local-first**. Não existe conta remota, rastreamento do conteúdo ou sincronização automática com um servidor.
 
-Os dados são armazenados no **IndexedDB** do navegador e separados em coleções para matérias, trabalhos, checklists, cadernos, anotações, flashcards, timers, estatísticas e outros recursos.
+Os dados são armazenados no **IndexedDB** do navegador e separados em coleções para matérias, trabalhos, checklists, cadernos, anotações, flashcards, materiais, questões, simulados, tentativas, timers e estatísticas.
 
 A aplicação também solicita armazenamento persistente ao navegador quando essa funcionalidade está disponível, reduzindo a possibilidade de remoção automática dos dados.
 
@@ -207,6 +224,8 @@ O ambiente completo pode ser exportado em um arquivo JSON contendo:
 * Checklists;
 * Cadernos e anotações;
 * Flashcards;
+* Materiais e referências;
+* Questões, modelos e tentativas de simulados;
 * Timers;
 * Estatísticas e demais dados relacionados.
 
@@ -273,6 +292,7 @@ Cada cenário pode ser personalizado através de parâmetros como:
 * Checklists;
 * Flashcards;
 * Cadernos;
+* Questões e simulados realistas;
 * Período histórico;
 * Percentual de conclusão;
 * Intensidade de atividade;
@@ -332,6 +352,8 @@ src/
 ├── data.ts         # entidades, normalização e limites do domínio
 ├── storage.ts      # IndexedDB, migração e backups
 ├── timerUtils.ts   # cálculos e transições seguras dos timers
+├── questionParser.ts # importação estruturada de questões em texto
+├── resourceUtils.ts # validação e classificação segura de links
 └── index.css       # temas e variáveis globais
 ```
 

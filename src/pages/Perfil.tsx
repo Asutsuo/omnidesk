@@ -9,7 +9,7 @@ const themes: { id: ThemeId; name: string; description: string; colors: string[]
   { id: "omnidesk", name: "OmniDesk Clássico", description: "Azul-marinho, marfim e laranja pastel.", colors: ["#1e2d4c", "#ec996a", "#f3f3ee", "#ffffff"] },
   { id: "sage", name: "Sálvia Serena", description: "Verdes tranquilos e creme acolhedor.", colors: ["#38574c", "#d49a78", "#f3f1e8", "#fbfaf4"] },
   { id: "aurora", name: "Aurora Pastel", description: "Lavanda, areia e rosa suave.", colors: ["#4d496f", "#d58d91", "#f5f0ed", "#fffaf7"] },
-  { id: "dune", name: "Duna Celeste", description: "Pergaminho quente com azul de horizonte.", colors: ["#765c32", "#5f91a8", "#f4efdf", "#fffaf0"] },
+  { id: "dune", name: "Duna Celeste", description: "Pergaminho, areia e terracota aquecida.", colors: ["#765c32", "#c37450", "#f4efdf", "#fffaf0"] },
   { id: "atlantic", name: "Noite Atlântica", description: "Azul profundo com detalhes luminosos.", colors: ["#dbe4e0", "#e7a27b", "#121b2b", "#1b2940"], dark: true },
   { id: "plum", name: "Ameixa Noturna", description: "Ameixa, lavanda e pêssego pastel.", colors: ["#eee5ec", "#dca090", "#211923", "#302434"], dark: true },
   { id: "eclipse", name: "Eclipse", description: "Preto profundo com calor âmbar discreto.", colors: ["#e1d5c0", "#d98c62", "#050505", "#101010"], dark: true },
