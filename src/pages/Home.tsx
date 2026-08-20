@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, BookOpen, BriefcaseBusiness, Check, CheckSquare2, Clock3, Flame, GraduationCap, Settings2, Timer, Users } from "lucide-react";
+import { ArrowRight, BarChart3, BookOpen, BriefcaseBusiness, Check, CheckSquare2, Clock3, Flame, GraduationCap, LibraryBig, Settings2, Timer, Users } from "lucide-react";
 import { useState } from "react";
 import type { PageId } from "../components/Navbar";
 import { formatTimer, subjectName, type AppData, type HomeShortcut } from "../data";
@@ -10,6 +10,7 @@ const shortcutOptions = [
   { id: "checklists", label: "Abrir checklists", description: "Acompanhe conteúdos e etapas", icon: CheckSquare2 },
   { id: "timer", label: "Iniciar foco", description: "Abra o timer de estudo geral", icon: Timer },
   { id: "flashcards", label: "Revisar cartões", description: "Veja todos os seus flashcards", icon: BookOpen },
+  { id: "library", label: "Abrir Biblioteca", description: "Acesse materiais e referências", icon: LibraryBig },
   { id: "equipes", label: "Abrir equipes", description: "Consulte seus grupos de estudo", icon: Users },
   { id: "estatisticas", label: "Ver progresso", description: "Analise sua evolução recente", icon: BarChart3 },
 ] as const;

@@ -5,6 +5,10 @@ export const LIMITS = {
   noteContent: 250_000, teams: 200, teamMembers: 100, stopwatchSeconds: 12 * 60 * 60,
   checklists: 2_000, checklistsPerSubject: 200, checklistSections: 100,
   checklistItems: 100_000, checklistItemsPerList: 2_000, checklistItemText: 1_000,
+  resources: 5_000, resourcesPerSubject: 1_000, resourceUrl: 2_048, resourceDescription: 2_000,
+  questions: 20_000, questionsPerSubject: 5_000, questionsPerImport: 500,
+  questionStatement: 10_000, questionExplanation: 20_000, questionAlternatives: 8,
+  simulations: 500, simulationQuestions: 200, simulationAttempts: 5_000,
 } as const;
 
 export const SUBJECT_COLORS = ["#6f98a8", "#e59a6f", "#728e78", "#87799b", "#c17c83", "#758eae", "#b19a67", "#5f8586"];
@@ -18,11 +22,17 @@ export type Flashcard = { id: string; question: string; answer: string; subject:
 export type Notebook = { id: string; subjectId: string; title: string; createdAt: string; updatedAt: string };
 export type Note = { id: string; notebookId: string; subjectId: string; title: string; content: string; createdAt: string; updatedAt: string };
 export type Team = { id: string; name: string; subject: string; members: string[]; nextMeeting: string };
-export type ThemeId = "omnidesk" | "sage" | "aurora" | "atlantic" | "plum";
-export type Profile = { name: string; course: string; objective: string; weeklyGoal: number; avatar?: string };
+export type ResourceType = "link" | "video" | "pdf" | "article" | "document" | "folder" | "other";
+export type StudyResource = { id: string; subjectId?: string; title: string; url: string; type: ResourceType; description: string; tags: string[]; collection: string; createdAt: string; updatedAt: string };
+export type QuestionAlternative = { id: string; text: string };
+export type Question = { id: string; subjectId?: string; collection: string; categories: string[]; statement: string; alternatives: QuestionAlternative[]; correctAlternativeId: string; explanation: string; institution: string; year?: number; source: string; createdAt: string; updatedAt: string };
+export type Simulation = { id: string; title: string; questionIds: string[]; shuffleQuestions: boolean; shuffleAlternatives: boolean; passingScore: number; createdAt: string; updatedAt: string };
+export type SimulationAttempt = { id: string; simulationId: string; title: string; questions: Question[]; answers: Record<string, string>; passingScore: number; status: "in_progress" | "completed"; startedAt: string; completedAt?: string; score?: number; passed?: boolean };
+export type ThemeId = "omnidesk" | "sage" | "aurora" | "dune" | "atlantic" | "plum" | "eclipse";
+export type Profile = { name: string; course: string; objective: string; weeklyGoal: number; avatar?: string; cover?: string };
 export type TimerType = "pomodoro" | "stopwatch";
 export type TimerMode = "focus" | "break";
-export type HomeShortcut = "subjects" | "prazos" | "checklists" | "timer" | "flashcards" | "equipes" | "estatisticas";
+export type HomeShortcut = "subjects" | "prazos" | "checklists" | "timer" | "flashcards" | "library" | "questions" | "equipes" | "estatisticas";
 export type TimerState = {
   id: string; scope: "global" | "subject"; subjectId?: string; type: TimerType; mode: TimerMode;
   durationSeconds: number; remainingSeconds: number; elapsedSeconds: number; recordedSeconds: number; focusMinutes: number; breakMinutes: number;
@@ -30,18 +40,19 @@ export type TimerState = {
 };
 export type DailyStat = { id: string; date: string; subjectId?: string; focusedSeconds: number; pomodoroCycles: number };
 export type AppData = {
-  version: 3; onboarded: boolean; profile: Profile; subjects: Subject[];
+  version: 5; onboarded: boolean; profile: Profile; subjects: Subject[];
   assignments: Assignment[]; flashcards: Flashcard[]; notebooks: Notebook[]; notes: Note[];
   checklists: Checklist[]; checklistSections: ChecklistSection[]; checklistItems: ChecklistItem[];
-  timers: TimerState[]; stats: DailyStat[]; teams: Team[]; focusMinutes: number;
+  timers: TimerState[]; stats: DailyStat[]; teams: Team[]; resources: StudyResource[];
+  questions: Question[]; simulations: Simulation[]; simulationAttempts: SimulationAttempt[]; focusMinutes: number;
   subjectView: "grid" | "list";
   homeShortcuts: HomeShortcut[];
   theme: ThemeId;
 };
 
 export const emptyData: AppData = {
-  version: 3, onboarded: false, profile: { name: "", course: "", objective: "", weeklyGoal: 5 },
-  subjects: [], assignments: [], flashcards: [], notebooks: [], notes: [], checklists: [], checklistSections: [], checklistItems: [], timers: [], stats: [], teams: [],
+  version: 5, onboarded: false, profile: { name: "", course: "", objective: "", weeklyGoal: 5 },
+  subjects: [], assignments: [], flashcards: [], notebooks: [], notes: [], checklists: [], checklistSections: [], checklistItems: [], timers: [], stats: [], teams: [], resources: [], questions: [], simulations: [], simulationAttempts: [],
   focusMinutes: 0, subjectView: "grid", homeShortcuts: ["subjects", "checklists", "flashcards"], theme: "omnidesk",
 };
 
@@ -54,18 +65,19 @@ export const createTimer = (scope: "global" | "subject", subjectId?: string): Ti
 export function normalizeData(value: Partial<AppData> & { profile?: Profile }): AppData {
   const legacyCards = Array.isArray(value.flashcards) ? value.flashcards : [];
   return {
-    ...emptyData, ...value, version: 3,
-    profile: { name: value.profile?.name ?? "", course: value.profile?.course ?? "", objective: value.profile?.objective ?? "", weeklyGoal: value.profile?.weeklyGoal ?? 5, ...(value.profile?.avatar ? { avatar: value.profile.avatar } : {}) },
+    ...emptyData, ...value, version: 5,
+    profile: { name: value.profile?.name ?? "", course: value.profile?.course ?? "", objective: value.profile?.objective ?? "", weeklyGoal: value.profile?.weeklyGoal ?? 5, ...(value.profile?.avatar ? { avatar: value.profile.avatar } : {}), ...(value.profile?.cover ? { cover: value.profile.cover } : {}) },
     subjects: Array.isArray(value.subjects) ? value.subjects : [],
     assignments: Array.isArray(value.assignments) ? value.assignments : [], flashcards: legacyCards.map((card) => ({ ...card, deck: card.deck || "Geral" })),
     notebooks: Array.isArray(value.notebooks) ? value.notebooks : [], notes: Array.isArray(value.notes) ? value.notes : [],
     checklists: Array.isArray(value.checklists) ? value.checklists : [], checklistSections: Array.isArray(value.checklistSections) ? value.checklistSections : [],
     checklistItems: Array.isArray(value.checklistItems) ? value.checklistItems : [],
-    timers: Array.isArray(value.timers) ? value.timers.map((timer) => ({ ...timer, recordedSeconds: timer.recordedSeconds || 0, focusMinutes: timer.focusMinutes || 25, breakMinutes: timer.breakMinutes || 5, status: "paused" as const, startedAt: null })) : [],
-    stats: Array.isArray(value.stats) ? value.stats : [], teams: Array.isArray(value.teams) ? value.teams : [],
+    timers: Array.isArray(value.timers) ? value.timers.map((timer) => ({ ...timer, recordedSeconds: timer.recordedSeconds || 0, focusMinutes: timer.focusMinutes || 25, breakMinutes: timer.breakMinutes || 5, status: timer.status === "running" && timer.startedAt ? "running" as const : "paused" as const, startedAt: timer.status === "running" && timer.startedAt ? timer.startedAt : null })) : [],
+    stats: Array.isArray(value.stats) ? value.stats : [], teams: Array.isArray(value.teams) ? value.teams : [], resources: Array.isArray(value.resources) ? value.resources.filter((item) => typeof item?.url === "string" && /^https?:\/\//i.test(item.url)) : [],
+    questions: Array.isArray(value.questions) ? value.questions : [], simulations: Array.isArray(value.simulations) ? value.simulations : [], simulationAttempts: Array.isArray(value.simulationAttempts) ? value.simulationAttempts : [],
     subjectView: value.subjectView === "list" ? "list" : "grid",
-    homeShortcuts: Array.isArray(value.homeShortcuts) ? value.homeShortcuts.filter((item): item is HomeShortcut => ["subjects", "prazos", "checklists", "timer", "flashcards", "equipes", "estatisticas"].includes(item)).slice(0, 4) : emptyData.homeShortcuts,
-    theme: (["omnidesk", "sage", "aurora", "atlantic", "plum"] as const).includes(value.theme as ThemeId) ? value.theme as ThemeId : "omnidesk",
+    homeShortcuts: Array.isArray(value.homeShortcuts) ? value.homeShortcuts.filter((item): item is HomeShortcut => ["subjects", "prazos", "checklists", "timer", "flashcards", "library", "questions", "equipes", "estatisticas"].includes(item)).slice(0, 4) : emptyData.homeShortcuts,
+    theme: (["omnidesk", "sage", "aurora", "dune", "atlantic", "plum", "eclipse"] as const).includes(value.theme as ThemeId) ? value.theme as ThemeId : "omnidesk",
   };
 }
 

@@ -106,7 +106,7 @@ export default function Prazos({ data, mutate }: Props) {
   };
 
   return (
-    <main className="page">
+    <main className="page prazos-page">
       <section className="page-toolbar">
         <div>
           <span className="eyebrow">Projetos e entregas</span>

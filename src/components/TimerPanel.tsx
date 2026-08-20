@@ -20,7 +20,7 @@ function TimerPanel({ scope, subjectId, timer, label, onStart, onUpdate, onDelet
     const finished = (current.type === "pomodoro" && seconds <= 0) || (current.type === "stopwatch" && seconds >= LIMITS.stopwatchSeconds);
     if (!finished) return;
     const focused = current.type === "pomodoro" && current.mode === "focus" ? current.durationSeconds : current.type === "stopwatch" ? seconds : 0;
-    onComplete(pauseTimer(current), focused);
+    onComplete(current, focused);
   }, [seconds, current, onComplete]);
 
   const saveCurrentProgress = () => onUpdate(pauseTimer(current));
