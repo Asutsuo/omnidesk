@@ -3,8 +3,8 @@ import { emptyData, isBackupData, normalizeData, type AppData } from "./data";
 const DB_NAME = "omnidesk";
 const DEMO_DB_NAME = import.meta.env.DEV ? "omnidesk-demo" : DB_NAME;
 export const DEV_DEMO_KEY = import.meta.env.DEV ? "omnidesk-dev-demo-mode" : "";
-const DB_VERSION = 5;
-const entityStores = ["subjects", "assignments", "flashcards", "notebooks", "notes", "checklists", "checklistSections", "checklistItems", "timers", "stats", "teams", "resources", "questions", "simulations", "simulationAttempts"] as const;
+const DB_VERSION = 6;
+const entityStores = ["subjects", "assignments", "flashcards", "notebooks", "notes", "checklists", "checklistSections", "checklistItems", "timers", "stats", "teams", "resources", "questions", "simulations", "simulationAttempts", "scheduleEntries"] as const;
 const allStores = ["meta", ...entityStores] as const;
 
 export const isDevDemoMode = () => import.meta.env.DEV && localStorage.getItem(DEV_DEMO_KEY) === "1";
@@ -22,7 +22,7 @@ function openDatabase(name = ACTIVE_DATABASE_NAME): Promise<IDBDatabase> {
       entityStores.forEach((name) => {
         if (!database.objectStoreNames.contains(name)) {
           const store = database.createObjectStore(name, { keyPath: "id" });
-          if (["assignments", "flashcards", "notebooks", "notes", "checklists", "timers", "stats", "resources", "questions"].includes(name)) store.createIndex("subjectId", "subjectId", { unique: false });
+          if (["assignments", "flashcards", "notebooks", "notes", "checklists", "timers", "stats", "resources", "questions", "scheduleEntries"].includes(name)) store.createIndex("subjectId", "subjectId", { unique: false });
           if (["checklistSections", "checklistItems"].includes(name)) store.createIndex("checklistId", "checklistId", { unique: false });
         }
       });
@@ -59,9 +59,9 @@ async function saveToDatabase(data: AppData, databaseName = ACTIVE_DATABASE_NAME
   const database = await openDatabase(databaseName);
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction([...allStores], "readwrite");
-    const { subjects, assignments, flashcards, notebooks, notes, checklists, checklistSections, checklistItems, timers, stats, teams, resources, questions, simulations, simulationAttempts, ...meta } = data;
+    const { subjects, assignments, flashcards, notebooks, notes, checklists, checklistSections, checklistItems, timers, stats, teams, resources, questions, simulations, simulationAttempts, scheduleEntries, ...meta } = data;
     transaction.objectStore("meta").put(meta, "settings");
-    const collections = { subjects, assignments, flashcards, notebooks, notes, checklists, checklistSections, checklistItems, timers, stats, teams, resources, questions, simulations, simulationAttempts };
+    const collections = { subjects, assignments, flashcards, notebooks, notes, checklists, checklistSections, checklistItems, timers, stats, teams, resources, questions, simulations, simulationAttempts, scheduleEntries };
     entityStores.forEach((name) => { const store = transaction.objectStore(name); store.clear(); collections[name].forEach((item) => store.put(item)); });
     transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); transaction.onabort = () => reject(transaction.error);
   });
@@ -78,7 +78,7 @@ export async function saveDevDemoData(data: AppData): Promise<void> {
 }
 
 export function downloadBackup(data: AppData) {
-  const payload = JSON.stringify({ application: "OmniDesk", schemaVersion: 5, exportedAt: new Date().toISOString(), data }, null, 2);
+  const payload = JSON.stringify({ application: "OmniDesk", schemaVersion: 6, exportedAt: new Date().toISOString(), data }, null, 2);
   const url = URL.createObjectURL(new Blob([payload], { type: "application/json" })); const anchor = document.createElement("a");
   anchor.href = url; anchor.download = `omnidesk-backup-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url);
 }
