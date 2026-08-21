@@ -7,7 +7,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { Assignment, AppData } from "../data";
-import { LIMITS, subjectName } from "../data";
+import { assignmentScheduleEntry, LIMITS, subjectName } from "../data";
 
 type Props = {
   data: AppData;
@@ -68,16 +68,12 @@ export default function Prazos({ data, mutate }: Props) {
 
     if (!values.title || !values.dueDate) return;
 
-    const nextAssignments = editing
-      ? data.assignments.map((item) =>
-          item.id === editing.id ? { ...item, ...values } : item,
-        )
-      : [
-          ...data.assignments,
-          { id: crypto.randomUUID(), completed: false, ...values },
-        ];
-
-    mutate((current) => ({ ...current, assignments: nextAssignments }));
+    mutate((current) => {
+      const assignment: Assignment = editing ? { ...editing, ...values } : { id: crypto.randomUUID(), completed: false, ...values };
+      const generated = assignmentScheduleEntry(assignment); const existing = current.scheduleEntries.find((item) => item.assignmentId === assignment.id);
+      const scheduleEntries = existing ? current.scheduleEntries.map((item) => item.assignmentId === assignment.id ? { ...item, title: assignment.title, description: assignment.description, subjectId: assignment.subjectId, date: assignment.dueDate, day: generated.day, updatedAt: new Date().toISOString() } : item) : current.scheduleEntries.length < LIMITS.scheduleEntries ? [...current.scheduleEntries, generated] : current.scheduleEntries;
+      return { ...current, assignments: editing ? current.assignments.map((item) => item.id === editing.id ? assignment : item) : [...current.assignments, assignment], scheduleEntries };
+    });
     closeForm();
   };
 
@@ -101,6 +97,7 @@ export default function Prazos({ data, mutate }: Props) {
     mutate((current) => ({
       ...current,
       assignments: current.assignments.filter((item) => item.id !== id),
+      scheduleEntries: current.scheduleEntries.filter((item) => item.assignmentId !== id),
     }));
     if (editing?.id === id) closeForm();
   };

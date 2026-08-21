@@ -3,8 +3,8 @@ import { emptyData, isBackupData, normalizeData, type AppData } from "./data";
 const DB_NAME = "omnidesk";
 const DEMO_DB_NAME = import.meta.env.DEV ? "omnidesk-demo" : DB_NAME;
 export const DEV_DEMO_KEY = import.meta.env.DEV ? "omnidesk-dev-demo-mode" : "";
-const DB_VERSION = 6;
-const entityStores = ["subjects", "assignments", "flashcards", "notebooks", "notes", "checklists", "checklistSections", "checklistItems", "timers", "stats", "teams", "resources", "questions", "simulations", "simulationAttempts", "scheduleEntries"] as const;
+const DB_VERSION = 7;
+const entityStores = ["subjects", "assignments", "flashcards", "notebooks", "notes", "checklists", "checklistSections", "checklistItems", "timers", "stats", "teams", "resources", "questions", "simulations", "simulationAttempts", "scheduleEntries", "quickNotes", "noteGroups"] as const;
 const allStores = ["meta", ...entityStores] as const;
 
 export const isDevDemoMode = () => import.meta.env.DEV && localStorage.getItem(DEV_DEMO_KEY) === "1";
@@ -59,9 +59,9 @@ async function saveToDatabase(data: AppData, databaseName = ACTIVE_DATABASE_NAME
   const database = await openDatabase(databaseName);
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction([...allStores], "readwrite");
-    const { subjects, assignments, flashcards, notebooks, notes, checklists, checklistSections, checklistItems, timers, stats, teams, resources, questions, simulations, simulationAttempts, scheduleEntries, ...meta } = data;
+    const { subjects, assignments, flashcards, notebooks, notes, checklists, checklistSections, checklistItems, timers, stats, teams, resources, questions, simulations, simulationAttempts, scheduleEntries, quickNotes, noteGroups, ...meta } = data;
     transaction.objectStore("meta").put(meta, "settings");
-    const collections = { subjects, assignments, flashcards, notebooks, notes, checklists, checklistSections, checklistItems, timers, stats, teams, resources, questions, simulations, simulationAttempts, scheduleEntries };
+    const collections = { subjects, assignments, flashcards, notebooks, notes, checklists, checklistSections, checklistItems, timers, stats, teams, resources, questions, simulations, simulationAttempts, scheduleEntries, quickNotes, noteGroups };
     entityStores.forEach((name) => { const store = transaction.objectStore(name); store.clear(); collections[name].forEach((item) => store.put(item)); });
     transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); transaction.onabort = () => reject(transaction.error);
   });
@@ -78,7 +78,7 @@ export async function saveDevDemoData(data: AppData): Promise<void> {
 }
 
 export function downloadBackup(data: AppData) {
-  const payload = JSON.stringify({ application: "OmniDesk", schemaVersion: 6, exportedAt: new Date().toISOString(), data }, null, 2);
+  const payload = JSON.stringify({ application: "OmniDesk", schemaVersion: 7, exportedAt: new Date().toISOString(), data }, null, 2);
   const url = URL.createObjectURL(new Blob([payload], { type: "application/json" })); const anchor = document.createElement("a");
   anchor.href = url; anchor.download = `omnidesk-backup-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url);
 }

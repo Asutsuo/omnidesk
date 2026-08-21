@@ -10,6 +10,7 @@ export const LIMITS = {
   questionStatement: 10_000, questionExplanation: 20_000, questionAlternatives: 8,
   simulations: 500, simulationQuestions: 200, simulationAttempts: 5_000,
   pomodoroCycles: 12, scheduleEntries: 500, scheduleTitle: 120, scheduleDescription: 1_000,
+  quickNotes: 2_000, noteGroups: 200, quickNoteContent: 250_000, slideshowNotes: 100,
 } as const;
 
 export const SUBJECT_COLORS = ["#6f98a8", "#e59a6f", "#728e78", "#87799b", "#c17c83", "#758eae", "#b19a67", "#5f8586"];
@@ -30,13 +31,18 @@ export type Question = { id: string; subjectId?: string; collection: string; cat
 export type Simulation = { id: string; title: string; questionIds: string[]; shuffleQuestions: boolean; shuffleAlternatives: boolean; passingScore: number; createdAt: string; updatedAt: string };
 export type SimulationAttempt = { id: string; simulationId: string; title: string; questions: Question[]; answers: Record<string, string>; passingScore: number; status: "in_progress" | "completed"; startedAt: string; completedAt?: string; score?: number; passed?: boolean };
 export type ScheduleCategory = "study" | "review" | "assignment" | "break" | "personal" | "other";
-export type ScheduleEntry = { id: string; title: string; description: string; day: number; startTime: string; endTime: string; category: ScheduleCategory; subjectId?: string; createdAt: string; updatedAt: string };
+export type ScheduleEntry = { id: string; title: string; description: string; day: number; startTime: string; endTime: string; category: ScheduleCategory; subjectId?: string; date?: string; timeDefined?: boolean; assignmentId?: string; createdAt: string; updatedAt: string };
+export type QuickNote = { id: string; title: string; content: string; groupId?: string; color: string; order: number; pinned: boolean; favorited?: boolean; archived: boolean; createdAt: string; updatedAt: string };
+export type NoteGroup = { id: string; name: string; order: number; primaryNoteId?: string };
+export type NoteWorkspace = { activeNoteId?: string; selectedGroupId?: string; sort: "manual" | "pinned" | "updated" | "created" | "alphabetical" | "color" };
+export type NoteWidgetState = { visible: boolean; noteId?: string; x: number; y: number; size: "compact" | "normal" | "expanded"; detachedFromActiveNote: boolean; mode?: "floating" | "docked" };
+export type NoteSlideshow = { enabled: boolean; noteIds: string[]; currentIndex: number; intervalSeconds: number; shuffle: boolean; repeat: boolean; status: "running" | "paused"; lastChangedAt?: number };
 export type ThemeId = "omnidesk" | "sage" | "aurora" | "dune" | "atlantic" | "plum" | "eclipse";
 export type Profile = { name: string; course: string; objective: string; weeklyGoal: number; avatar?: string; cover?: string };
 export type AccessStreak = { current: number; best: number; lastVisitDate: string };
 export type TimerType = "pomodoro" | "stopwatch";
 export type TimerMode = "focus" | "break";
-export type HomeShortcut = "subjects" | "prazos" | "checklists" | "timer" | "flashcards" | "library" | "questions" | "schedule" | "equipes" | "estatisticas";
+export type HomeShortcut = "subjects" | "prazos" | "checklists" | "timer" | "flashcards" | "library" | "questions" | "schedule" | "notes" | "equipes" | "estatisticas";
 export type TimerState = {
   id: string; scope: "global" | "subject"; subjectId?: string; type: TimerType; mode: TimerMode;
   durationSeconds: number; remainingSeconds: number; elapsedSeconds: number; recordedSeconds: number; focusMinutes: number; breakMinutes: number;
@@ -45,11 +51,12 @@ export type TimerState = {
 };
 export type DailyStat = { id: string; date: string; subjectId?: string; focusedSeconds: number; pomodoroCycles: number };
 export type AppData = {
-  version: 6; onboarded: boolean; profile: Profile; subjects: Subject[];
+  version: 7; onboarded: boolean; profile: Profile; subjects: Subject[];
   assignments: Assignment[]; flashcards: Flashcard[]; notebooks: Notebook[]; notes: Note[];
   checklists: Checklist[]; checklistSections: ChecklistSection[]; checklistItems: ChecklistItem[];
   timers: TimerState[]; stats: DailyStat[]; teams: Team[]; resources: StudyResource[];
   questions: Question[]; simulations: Simulation[]; simulationAttempts: SimulationAttempt[]; scheduleEntries: ScheduleEntry[]; focusMinutes: number;
+  quickNotes: QuickNote[]; noteGroups: NoteGroup[]; noteWorkspace: NoteWorkspace; noteWidget: NoteWidgetState; noteSlideshow: NoteSlideshow;
   subjectView: "grid" | "list";
   homeShortcuts: HomeShortcut[];
   theme: ThemeId;
@@ -57,9 +64,9 @@ export type AppData = {
 };
 
 export const emptyData: AppData = {
-  version: 6, onboarded: false, profile: { name: "", course: "", objective: "", weeklyGoal: 5 },
-  subjects: [], assignments: [], flashcards: [], notebooks: [], notes: [], checklists: [], checklistSections: [], checklistItems: [], timers: [], stats: [], teams: [], resources: [], questions: [], simulations: [], simulationAttempts: [], scheduleEntries: [],
-  focusMinutes: 0, subjectView: "grid", homeShortcuts: ["subjects", "checklists", "flashcards"], theme: "omnidesk", accessStreak: { current: 0, best: 0, lastVisitDate: "" },
+  version: 7, onboarded: false, profile: { name: "", course: "", objective: "", weeklyGoal: 5 },
+  subjects: [], assignments: [], flashcards: [], notebooks: [], notes: [], checklists: [], checklistSections: [], checklistItems: [], timers: [], stats: [], teams: [], resources: [], questions: [], simulations: [], simulationAttempts: [], scheduleEntries: [], quickNotes: [], noteGroups: [],
+  focusMinutes: 0, subjectView: "grid", homeShortcuts: ["subjects", "checklists", "flashcards"], theme: "omnidesk", accessStreak: { current: 0, best: 0, lastVisitDate: "" }, noteWorkspace: { sort: "manual" }, noteWidget: { visible: false, x: 0, y: 150, size: "normal", detachedFromActiveNote: false, mode: "floating" }, noteSlideshow: { enabled: false, noteIds: [], currentIndex: 0, intervalSeconds: 30, shuffle: false, repeat: true, status: "paused" },
 };
 
 export const createTimer = (scope: "global" | "subject", subjectId?: string): TimerState => ({
@@ -69,25 +76,37 @@ export const createTimer = (scope: "global" | "subject", subjectId?: string): Ti
   updatedAt: new Date().toISOString(),
 });
 
+export const assignmentScheduleEntry = (assignment: Assignment): ScheduleEntry => {
+  const date = new Date(`${assignment.dueDate}T12:00:00`); const now = new Date().toISOString();
+  return { id: `schedule-assignment-${assignment.id}`, assignmentId: assignment.id, title: assignment.title, description: assignment.description, subjectId: assignment.subjectId, date: assignment.dueDate, day: (date.getDay() + 6) % 7, startTime: "", endTime: "", timeDefined: false, category: "assignment", createdAt: now, updatedAt: now };
+};
+
 export function normalizeData(value: Partial<AppData> & { profile?: Profile }): AppData {
   const legacyCards = Array.isArray(value.flashcards) ? value.flashcards : [];
   const streakCurrent = Math.max(0, Math.floor(Number(value.accessStreak?.current) || 0));
+  const assignments = Array.isArray(value.assignments) ? value.assignments : [];
+  const assignmentIds = new Set(assignments.map((assignment) => assignment.id)); const storedSchedule = Array.isArray(value.scheduleEntries) ? value.scheduleEntries.filter((entry) => entry && (!entry.assignmentId || assignmentIds.has(entry.assignmentId)) && Number.isInteger(entry.day) && entry.day >= 0 && entry.day <= 6 && ((!entry.timeDefined && !entry.startTime && !entry.endTime) || (/^\d{2}:\d{2}$/.test(entry.startTime) && /^\d{2}:\d{2}$/.test(entry.endTime)))) : [];
+  const scheduleIds = new Set(storedSchedule.map((entry) => entry.assignmentId).filter(Boolean)); const generatedSchedule = assignments.filter((assignment) => !scheduleIds.has(assignment.id)).map(assignmentScheduleEntry);
   return {
-    ...emptyData, ...value, version: 6,
+    ...emptyData, ...value, version: 7,
     profile: { name: value.profile?.name ?? "", course: value.profile?.course ?? "", objective: value.profile?.objective ?? "", weeklyGoal: value.profile?.weeklyGoal ?? 5, ...(value.profile?.avatar ? { avatar: value.profile.avatar } : {}), ...(value.profile?.cover ? { cover: value.profile.cover } : {}) },
     subjects: Array.isArray(value.subjects) ? value.subjects : [],
-    assignments: Array.isArray(value.assignments) ? value.assignments : [], flashcards: legacyCards.map((card) => ({ ...card, deck: card.deck || "Geral" })),
+    assignments, flashcards: legacyCards.map((card) => ({ ...card, deck: card.deck || "Geral" })),
     notebooks: Array.isArray(value.notebooks) ? value.notebooks : [], notes: Array.isArray(value.notes) ? value.notes : [],
     checklists: Array.isArray(value.checklists) ? value.checklists : [], checklistSections: Array.isArray(value.checklistSections) ? value.checklistSections : [],
     checklistItems: Array.isArray(value.checklistItems) ? value.checklistItems : [],
     timers: Array.isArray(value.timers) ? value.timers.map((timer) => ({ ...timer, recordedSeconds: timer.recordedSeconds || 0, focusMinutes: timer.focusMinutes || 25, breakMinutes: timer.breakMinutes || 5, cyclesTarget: Math.max(1, Math.min(LIMITS.pomodoroCycles, Number(timer.cyclesTarget) || 4)), completedCycles: Math.max(0, Math.min(Number(timer.cyclesTarget) || 4, Number(timer.completedCycles) || 0)), status: timer.status === "running" && timer.startedAt ? "running" as const : "paused" as const, startedAt: timer.status === "running" && timer.startedAt ? timer.startedAt : null })) : [],
     stats: Array.isArray(value.stats) ? value.stats : [], teams: Array.isArray(value.teams) ? value.teams : [], resources: Array.isArray(value.resources) ? value.resources.filter((item) => typeof item?.url === "string" && /^https?:\/\//i.test(item.url)) : [],
     questions: Array.isArray(value.questions) ? value.questions : [], simulations: Array.isArray(value.simulations) ? value.simulations : [], simulationAttempts: Array.isArray(value.simulationAttempts) ? value.simulationAttempts : [],
-    scheduleEntries: Array.isArray(value.scheduleEntries) ? value.scheduleEntries.filter((entry) => entry && Number.isInteger(entry.day) && entry.day >= 0 && entry.day <= 6 && /^\d{2}:\d{2}$/.test(entry.startTime) && /^\d{2}:\d{2}$/.test(entry.endTime)).slice(0, LIMITS.scheduleEntries) : [],
+    scheduleEntries: [...storedSchedule, ...generatedSchedule].slice(0, LIMITS.scheduleEntries),
+    quickNotes: Array.isArray(value.quickNotes) ? value.quickNotes.slice(0, LIMITS.quickNotes) : [], noteGroups: Array.isArray(value.noteGroups) ? value.noteGroups.slice(0, LIMITS.noteGroups) : [],
     subjectView: value.subjectView === "list" ? "list" : "grid",
-    homeShortcuts: Array.isArray(value.homeShortcuts) ? value.homeShortcuts.filter((item): item is HomeShortcut => ["subjects", "prazos", "checklists", "timer", "flashcards", "library", "questions", "schedule", "equipes", "estatisticas"].includes(item)).slice(0, 4) : emptyData.homeShortcuts,
+    homeShortcuts: Array.isArray(value.homeShortcuts) ? value.homeShortcuts.filter((item): item is HomeShortcut => ["subjects", "prazos", "checklists", "timer", "flashcards", "library", "questions", "schedule", "notes", "equipes", "estatisticas"].includes(item)).slice(0, 4) : emptyData.homeShortcuts,
     theme: (["omnidesk", "sage", "aurora", "dune", "atlantic", "plum", "eclipse"] as const).includes(value.theme as ThemeId) ? value.theme as ThemeId : "omnidesk",
     accessStreak: { current: streakCurrent, best: Math.max(streakCurrent, Math.max(0, Math.floor(Number(value.accessStreak?.best) || 0))), lastVisitDate: typeof value.accessStreak?.lastVisitDate === "string" ? value.accessStreak.lastVisitDate : "" },
+    noteWorkspace: { activeNoteId: value.noteWorkspace?.activeNoteId, selectedGroupId: value.noteWorkspace?.selectedGroupId, sort: (["manual", "pinned", "updated", "created", "alphabetical", "color"].includes(value.noteWorkspace?.sort ?? "") ? value.noteWorkspace?.sort : "manual") as NoteWorkspace["sort"] },
+    noteWidget: { visible: !!value.noteWidget?.visible, noteId: value.noteWidget?.noteId, x: Number.isFinite(value.noteWidget?.x) ? Number(value.noteWidget?.x) : 0, y: Number.isFinite(value.noteWidget?.y) ? Number(value.noteWidget?.y) : 150, size: (["compact", "normal", "expanded"].includes(value.noteWidget?.size ?? "") ? value.noteWidget?.size : "normal") as NoteWidgetState["size"], detachedFromActiveNote: !!value.noteWidget?.detachedFromActiveNote, mode: value.noteWidget?.mode === "docked" ? "docked" : "floating" },
+    noteSlideshow: { enabled: !!value.noteSlideshow?.enabled, noteIds: Array.isArray(value.noteSlideshow?.noteIds) ? value.noteSlideshow.noteIds.slice(0, LIMITS.slideshowNotes) : [], currentIndex: Math.max(0, Math.floor(Number(value.noteSlideshow?.currentIndex) || 0)), intervalSeconds: Math.min(3600, Math.max(5, Number(value.noteSlideshow?.intervalSeconds) || 30)), shuffle: !!value.noteSlideshow?.shuffle, repeat: value.noteSlideshow?.repeat !== false, status: "paused", lastChangedAt: value.noteSlideshow?.lastChangedAt },
   };
 }
 
