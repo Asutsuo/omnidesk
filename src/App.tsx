@@ -4,6 +4,7 @@ import Navbar, { type PageId } from "./components/Navbar";
 import Onboarding from "./components/Onboarding";
 import QuickActionModal from "./components/QuickActionModal";
 import FloatingTimer from "./components/FloatingTimer";
+import ScrollToTop from "./components/ScrollToTop";
 import { pauseTimer } from "./timerUtils";
 import { assignmentScheduleEntry, emptyData, LIMITS, registerDailyAccess, type AppData, type Assignment, type Checklist, type Flashcard, type Profile, type StudyResource, type Subject, type Team, type TimerState } from "./data";
 import { loadAppData, requestPersistentStorage, saveAppData } from "./storage";
@@ -95,8 +96,8 @@ function App() {
   const currentSubject = subjectId ? data.subjects.find((item) => item.id === subjectId) : undefined;
   const runningTimer = data.timers.find((item) => item.status === "running"); const widgetTimer = runningTimer ?? data.timers.find((item) => item.id === widgetTimerId);
   const floatingTimer = <FloatingTimer data={data} timer={widgetTimer} onStart={timerStart} onUpdate={(timer) => { setWidgetTimerId(timer.id); timerUpdate(timer); }} onDelete={timerDelete} onComplete={timerComplete} onOpen={(timer) => { if (timer.scope === "subject" && timer.subjectId && data.subjects.some((item) => item.id === timer.subjectId)) setSubjectId(timer.subjectId); else navigate("timer"); }} />;
-  const floatingNote = data.noteWidget.visible || data.noteSlideshow.status === "running" ? <Suspense fallback={null}><FloatingNote data={data} mutate={mutate} allowDock={!currentSubject} onOpen={() => { setData((current) => { const note = current.quickNotes.find((item) => item.id === current.noteWidget.noteId); return note ? { ...current, noteWorkspace: { ...current.noteWorkspace, activeNoteId: note.id, selectedGroupId: note.groupId } } : current; }); navigate("notes"); }} /></Suspense> : null;
-  if (currentSubject) return <><SubjectWorkspace data={data} subjectId={currentSubject.id} mutate={mutate} onBack={() => setSubjectId(undefined)} onTimerStart={timerStart} onTimerUpdate={timerUpdate} onTimerDelete={timerDelete} onTimerComplete={timerComplete} />{floatingTimer}{floatingNote}{devTools}</>;
+  const floatingNote = data.noteWidget.visible || data.noteSlideshow.status === "running" ? <Suspense fallback={null}><FloatingNote data={data} mutate={mutate} allowDock onOpen={() => { setData((current) => { const note = current.quickNotes.find((item) => item.id === current.noteWidget.noteId); return note ? { ...current, noteWorkspace: { ...current.noteWorkspace, activeNoteId: note.id, selectedGroupId: note.groupId } } : current; }); navigate("notes"); }} /></Suspense> : null;
+  if (currentSubject) return <><div id="subject-shell">{floatingNote}<SubjectWorkspace data={data} subjectId={currentSubject.id} mutate={mutate} onBack={() => setSubjectId(undefined)} onTimerStart={timerStart} onTimerUpdate={timerUpdate} onTimerDelete={timerDelete} onTimerComplete={timerComplete} /></div>{floatingTimer}<ScrollToTop />{devTools}</>;
 
   const meta = page === "home" ? { ...pageMeta.home, title: `Olá, ${data.profile.name.split(" ")[0]}` } : pageMeta[page]; const globalTimer = data.timers.find((item) => item.scope === "global");
   const content: Record<PageId, React.ReactNode> = {
@@ -113,6 +114,6 @@ function App() {
     equipes: <Equipes teams={data.teams} onAdd={actions.addTeam} onRemove={actions.removeTeam} />, estatisticas: <Estatisticas data={data} />,
     perfil: <Perfil data={data} onSave={(profile) => setData((current) => ({ ...current, profile }))} onTheme={(theme) => setData((current) => ({ ...current, theme }))} onImport={updateData} />,
   };
-  return <><div id="app"><Navbar selected={page} onSelect={navigate} onQuickAction={() => setQuickActionOpen(true)} />{floatingNote}<section id="content-area"><Header {...meta} initials={data.profile.name.slice(0, 2).toUpperCase()} avatar={data.profile.avatar} streak={data.accessStreak.current} onMenu={() => document.body.classList.toggle("nav-open")} />{storageError && <button className="storage-alert" onClick={() => setStorageError("")}>{storageError} ×</button>}{content[page]}</section>{quickActionOpen && <QuickActionModal subjects={data.subjects} onClose={() => setQuickActionOpen(false)} onAddAssignment={actions.addAssignment} onAddChecklist={actions.addChecklist} onAddCard={actions.addCard} onAddResource={actions.addResource} onAddSubject={addSubject} />}</div>{floatingTimer}{devTools}</>;
+  return <><div id="app"><Navbar selected={page} onSelect={navigate} onQuickAction={() => setQuickActionOpen(true)} />{floatingNote}<section id="content-area"><Header {...meta} initials={data.profile.name.slice(0, 2).toUpperCase()} avatar={data.profile.avatar} streak={data.accessStreak.current} onMenu={() => document.body.classList.toggle("nav-open")} />{storageError && <button className="storage-alert" onClick={() => setStorageError("")}>{storageError} ×</button>}{content[page]}</section>{quickActionOpen && <QuickActionModal subjects={data.subjects} onClose={() => setQuickActionOpen(false)} onAddAssignment={actions.addAssignment} onAddChecklist={actions.addChecklist} onAddCard={actions.addCard} onAddResource={actions.addResource} onAddSubject={addSubject} />}</div>{floatingTimer}<ScrollToTop />{devTools}</>;
 }
 export default App;

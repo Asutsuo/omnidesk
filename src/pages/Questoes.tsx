@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 import { CheckCircle2, ChevronLeft, ChevronRight, CircleHelp, FileInput, Pencil, Play, Plus, Search, Shuffle, Trash2, XCircle } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { LIMITS, subjectName, type AppData, type Question, type SimulationAttempt } from "../data";
 import { parseQuestionsText, QUESTION_IMPORT_EXAMPLE, type QuestionParseResult } from "../questionParser";
 
-type Props = { data: AppData; mutate: (updater: (data: AppData) => AppData) => void; fixedSubjectId?: string; embedded?: boolean };
+type Props = { data: AppData; mutate: (updater: (data: AppData) => AppData) => void; fixedSubjectId?: string; embedded?: boolean; onContextChange?: (segments: string[]) => void };
 type Tab = "bank" | "simulations" | "history";
 const shuffled = <T,>(values: T[]) => { const result = [...values]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; };
 const now = () => new Date().toISOString();
 const resultTone = (attempt: SimulationAttempt) => attempt.status !== "completed" ? "pending" : (attempt.score ?? 0) < attempt.passingScore ? "failed" : (attempt.score ?? 0) < attempt.passingScore + 1 ? "near" : "passed";
 const confirmBulk = (count: number, action: string) => window.confirm(`${action} ${count} questões selecionadas?`) && window.confirm("Esta alteração em massa pode afetar modelos de simulados. Confirma novamente?");
 
-function Questoes({ data, mutate, fixedSubjectId, embedded }: Props) {
+function Questoes({ data, mutate, fixedSubjectId, embedded, onContextChange }: Props) {
   const [tab, setTab] = useState<Tab>("bank"); const [search, setSearch] = useState(""); const [subjectFilter, setSubjectFilter] = useState(fixedSubjectId ?? "all");
   const [collection, setCollection] = useState("all"); const [category, setCategory] = useState("all"); const [formOpen, setFormOpen] = useState(false); const [importOpen, setImportOpen] = useState(false);
   const [alternatives, setAlternatives] = useState(["", "", "", ""]); const [editing, setEditing] = useState<Question>(); const [importText, setImportText] = useState(QUESTION_IMPORT_EXAMPLE); const [preview, setPreview] = useState<QuestionParseResult>();
@@ -21,6 +21,7 @@ function Questoes({ data, mutate, fixedSubjectId, embedded }: Props) {
   const attempts = data.simulationAttempts.filter((item) => !fixedSubjectId || item.questions.some((question) => question.subjectId === fixedSubjectId));
   const visibleSimulations = data.simulations.filter((simulation) => !fixedSubjectId || simulation.questionIds.some((id) => data.questions.find((question) => question.id === id)?.subjectId === fixedSubjectId));
   const currentAttempt = data.simulationAttempts.find((item) => item.id === activeAttempt && item.status === "in_progress");
+  useEffect(() => { const root = tab === "bank" ? "Banco de questões" : tab === "simulations" ? "Simulados" : "Histórico"; onContextChange?.([root, ...(currentAttempt ? ["Em andamento"] : reviewing ? ["Revisão"] : [])]); }, [tab, currentAttempt, reviewing, onContextChange]);
 
   const resetForm = () => { setEditing(undefined); setAlternatives(["", "", "", ""]); setFormOpen(false); };
   const saveQuestion = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); const clean = alternatives.map((text, index) => ({ id: String.fromCharCode(65 + index), text: text.trim() })).filter((item) => item.text); if (clean.length < 2) return; const stamp = now(); const question: Question = { id: editing?.id ?? crypto.randomUUID(), subjectId: fixedSubjectId || String(form.get("subjectId") || "") || undefined, collection: String(form.get("collection") || "Geral").trim() || "Geral", categories: String(form.get("categories") || "").split(",").map((item) => item.trim()).filter(Boolean).slice(0, 12), statement: String(form.get("statement")).trim(), alternatives: clean, correctAlternativeId: String(form.get("answer")), explanation: String(form.get("explanation") || "").trim(), institution: String(form.get("institution") || "").trim(), year: Number(form.get("year")) || undefined, source: String(form.get("source") || "").trim(), createdAt: editing?.createdAt ?? stamp, updatedAt: stamp }; mutate((current) => ({ ...current, questions: editing ? current.questions.map((item) => item.id === question.id ? question : item) : [question, ...current.questions] })); resetForm(); };

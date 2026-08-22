@@ -26,7 +26,7 @@ Uma plataforma acadêmica local-first para planejar conteúdos, manter o foco e 
 
 ## Sobre o projeto
 
-O OmniDesk reúne matérias, trabalhos, checklists, sessões de foco, flashcards, cadernos, materiais, questões, simulados e estatísticas em uma interface limpa e responsiva.
+O OmniDesk reúne matérias, trabalhos, checklists, sessões de foco, flashcards, cadernos, anotações Markdown, materiais, questões, simulados, cronograma e estatísticas em uma interface limpa e responsiva.
 
 A organização é baseada em **matérias**, que funcionam como espaços independentes de estudo. Ao mesmo tempo, as ferramentas também possuem visões globais, permitindo organizar conteúdos que pertencem a uma disciplina específica ou objetivos mais amplos sem impor uma única forma de estudo.
 
@@ -39,11 +39,13 @@ Os dados permanecem no próprio navegador por padrão. A aplicação funciona se
 | **Matérias**       | Espaços independentes com trabalhos, checklists, timer, cadernos, materiais, flashcards e questões próprios.               |
 | **Trabalhos**      | Projetos gerais ou vinculados a uma matéria, com descrição, prazo, prioridade, edição e conclusão.                         |
 | **Checklists**     | Listas gerais ou por matéria, seções reordenáveis, movimentação de itens, inclusão em massa e acompanhamento de progresso. |
-| **Foco**           | Pomodoro e cronômetro global ou por matéria, com persistência e widget flutuante.                                           |
+| **Foco**           | Pomodoro com ciclos configuráveis e cronômetro global ou por matéria, com persistência e widget flutuante.                  |
 | **Cadernos**       | Cadernos por matéria, múltiplas anotações, salvamento automático, renomeação e exclusão.                                   |
-| **Flashcards**     | Cartões organizados por blocos, revisão interativa e controle dos cartões dominados.                                       |
+| **Anotações**      | Cards Markdown gerais, favoritos, destaque, grupos, slides e painel flutuante, compacto ou encaixado.                      |
+| **Flashcards**     | Cartões organizados por blocos, revisão interativa, importação em massa e controle dos cartões dominados.                  |
 | **Biblioteca**     | Links para vídeos, PDFs, artigos, documentos e pastas, organizados em coleções e tags.                                      |
-| **Questões**       | Banco pesquisável, importação em texto, simulados, correção, notas e revisão do gabarito.                                   |
+| **Questões**       | Banco pesquisável, operações em massa, importação em texto, simulados, correção, notas e revisão do gabarito.              |
+| **Cronograma**     | Semana navegável, agenda vertical, recorrências, blocos únicos e integração automática com trabalhos.                     |
 | **Estatísticas**   | Evolução, distribuição, metas, sessões e desempenho em questões e simulados.                                               |
 | **Personalização** | Avatar, capa, atalhos configuráveis e sete temas — quatro claros e três escuros.                                            |
 | **Dados**          | IndexedDB, funcionamento offline e importação/exportação de backups locais.                                                |
@@ -127,7 +129,7 @@ O OmniDesk possui um timer global e permite que cada matéria preserve seu próp
 
 Existem dois modos:
 
-* **Pomodoro**, configurado inicialmente com 25 minutos de foco e 5 minutos de intervalo;
+* **Pomodoro**, configurado inicialmente com 25 minutos de foco e 5 minutos de intervalo, com quantidade de ciclos ajustável;
 * **Cronômetro progressivo**, limitado a 12 horas por sessão.
 
 Vários timers podem permanecer salvos e pausados, mas **somente um pode executar por vez**, inclusive entre diferentes abas do navegador.
@@ -143,6 +145,49 @@ O sistema segue algumas regras para preservar a consistência das sessões:
 * Timestamps e checkpoints reconstroem o tempo após recarregamentos e encerramentos inesperados.
 * O cálculo utiliza timestamps em vez de depender apenas dos intervalos visuais do navegador.
 * Ao alcançar zero ou o limite máximo, o relógio pausa e registra a sessão.
+
+## Anotações Markdown sempre à vista
+
+A área global de **Anotações** funciona como um mural de cards cujo conteúdo já aparece renderizado ao abrir a ferramenta. As notas aceitam Markdown com títulos, listas, tabelas, links, citações, código e checkboxes interativas.
+
+Para organização, é possível:
+
+* Criar grupos e escolher uma nota destacada para permanecer no início;
+* Favoritar notas em uma coleção permanente e sincronizada;
+* Ordenar, pesquisar, colorir, arquivar e reorganizar os cards;
+* Montar apresentações automáticas com notas selecionadas;
+* Marcar checkboxes diretamente na visualização ou editar o Markdown original.
+
+Uma única nota pode permanecer disponível em toda a plataforma através de um painel que possui três comportamentos:
+
+* **Flutuante:** pode ser arrastado livremente pela tela;
+* **Compacto:** preserva a nota aberta mostrando somente suas informações essenciais;
+* **Encaixado:** entra no fluxo do layout ao lado da navegação ou dentro do espaço de uma matéria, sem cobrir o conteúdo.
+
+O painel e o widget do timer evitam ocupar a mesma região da tela e preservam seus estados localmente.
+
+## Cronograma semanal
+
+O Cronograma utiliza uma faixa semanal compacta e uma agenda vertical, evitando uma tabela de sete colunas e a rolagem horizontal de cards.
+
+Cada semana pode ser navegada independentemente da data atual. A interface oferece:
+
+* Seleção de um dia por data concreta;
+* Resumo da quantidade e das categorias de blocos em cada dia;
+* Agenda vertical do dia selecionado;
+* Visão secundária da semana inteira como lista;
+* Blocos únicos vinculados a uma data;
+* Blocos recorrentes projetados nas semanas seguintes;
+* Tratamento próprio para compromissos sem horário definido;
+* Navegação para a semana atual, anterior ou seguinte.
+
+Todo trabalho criado também gera uma entrada vinculada no Cronograma. A data acompanha a entrega e o horário pode ser definido posteriormente. Ao mover um bloco para outra semana, ele permanece salvo e a interface oferece acesso direto à nova semana.
+
+## Navegação durante o estudo
+
+Nos espaços de matéria, uma barra contextual fixa mostra o caminho atual, incluindo ferramentas, cadernos, simulados, histórico e revisão. Ela permite retornar à visão da matéria sem depender do histórico do navegador.
+
+Em páginas com bastante conteúdo vertical, um botão lateral de retorno ao topo aparece somente depois de uma rolagem significativa. Assim, revisões extensas e grandes coleções continuam navegáveis sem adicionar controles permanentes às telas menores.
 
 ## Checklists e inclusão em massa
 
@@ -176,7 +221,7 @@ A Biblioteca reúne referências externas sem armazenar arquivos pesados no Omni
 
 ## Questões e simulados
 
-O banco de questões aceita cadastro manual e importação estruturada em texto, com organização por matéria, coleção, categoria, instituição, ano e fonte. Busca e filtros ajudam a selecionar conteúdos para modelos de simulados.
+O banco de questões aceita cadastro manual e importação estruturada em texto, com organização por matéria, coleção, categoria, instituição, ano e fonte. Busca e filtros ajudam a selecionar conteúdos para modelos de simulados. Seleções em massa permitem editar coleção, categorias e matéria ou excluir várias questões com confirmações de segurança.
 
 Os simulados podem embaralhar questões e alternativas, definir nota mínima, salvar tentativas incompletas e corrigir apenas após a entrega. O histórico preserva as questões utilizadas e permite revisar respostas, gabarito e comentários mesmo que o banco seja alterado posteriormente.
 
@@ -191,11 +236,12 @@ O painel acompanha informações como:
 * Atividades concluídas;
 * Flashcards dominados;
 * Meta semanal;
+* Streak atual e melhor sequência de acesso;
 * Constância nos últimos 14 dias;
 * Evolução ao longo de seis semanas;
 * Distribuição do estudo por matéria;
 * Conteúdos e sessões gerais;
-* Dias com e sem registro de estudo.
+* Dias com e sem registro de estudo;
 * Média de acertos, nota média, metas atingidas e desempenho por categoria em simulados.
 
 O tempo é contabilizado progressivamente para evitar que períodos já registrados sejam somados novamente quando uma sessão é pausada e retomada.
@@ -204,7 +250,7 @@ O tempo é contabilizado progressivamente para evitar que períodos já registra
 
 O OmniDesk é uma aplicação **local-first**. Não existe conta remota, rastreamento do conteúdo ou sincronização automática com um servidor.
 
-Os dados são armazenados no **IndexedDB** do navegador e separados em coleções para matérias, trabalhos, checklists, cadernos, anotações, flashcards, materiais, questões, simulados, tentativas, timers e estatísticas.
+Os dados são armazenados no **IndexedDB** do navegador e separados em coleções para matérias, trabalhos, checklists, cadernos, anotações Markdown, flashcards, materiais, questões, simulados, tentativas, cronograma, timers e estatísticas.
 
 A aplicação também solicita armazenamento persistente ao navegador quando essa funcionalidade está disponível, reduzindo a possibilidade de remoção automática dos dados.
 
@@ -223,9 +269,11 @@ O ambiente completo pode ser exportado em um arquivo JSON contendo:
 * Trabalhos;
 * Checklists;
 * Cadernos e anotações;
+* Anotações Markdown, grupos e configurações do painel;
 * Flashcards;
 * Materiais e referências;
 * Questões, modelos e tentativas de simulados;
+* Blocos únicos, recorrências e trabalhos do Cronograma;
 * Timers;
 * Estatísticas e demais dados relacionados.
 
@@ -292,6 +340,8 @@ Cada cenário pode ser personalizado através de parâmetros como:
 * Checklists;
 * Flashcards;
 * Cadernos;
+* Anotações Markdown e grupos;
+* Blocos de cronograma distribuídos por semanas;
 * Questões e simulados realistas;
 * Período histórico;
 * Percentual de conclusão;
@@ -352,6 +402,7 @@ src/
 ├── data.ts         # entidades, normalização e limites do domínio
 ├── storage.ts      # IndexedDB, migração e backups
 ├── timerUtils.ts   # cálculos e transições seguras dos timers
+├── markdownUtils.ts # interação segura com checkboxes Markdown
 ├── questionParser.ts # importação estruturada de questões em texto
 ├── resourceUtils.ts # validação e classificação segura de links
 └── index.css       # temas e variáveis globais
@@ -363,6 +414,7 @@ src/
 * [TypeScript](https://www.typescriptlang.org/)
 * [Vite](https://vite.dev/)
 * [Lucide React](https://lucide.dev/)
+* [React Markdown](https://github.com/remarkjs/react-markdown) e [remark-gfm](https://github.com/remarkjs/remark-gfm)
 * [IndexedDB](https://developer.mozilla.org/docs/Web/API/IndexedDB_API)
 * [Cloudflare Workers](https://developers.cloudflare.com/workers/)
 * CSS responsivo sem biblioteca visual
