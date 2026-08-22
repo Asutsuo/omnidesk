@@ -179,6 +179,7 @@ Cada semana pode ser navegada independentemente da data atual. A interface ofere
 * Blocos únicos vinculados a uma data;
 * Blocos recorrentes projetados nas semanas seguintes;
 * Tratamento próprio para compromissos sem horário definido;
+* Importação e exportação do planejamento em formato legível, editável e compartilhável;
 * Navegação para a semana atual, anterior ou seguinte.
 
 Todo trabalho criado também gera uma entrada vinculada no Cronograma. A data acompanha a entrega e o horário pode ser definido posteriormente. Ao mover um bloco para outra semana, ele permanece salvo e a interface oferece acesso direto à nova semana.
