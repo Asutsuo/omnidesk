@@ -40,7 +40,7 @@ Os dados permanecem no próprio navegador por padrão. A aplicação funciona se
 | **Trabalhos**      | Projetos gerais ou vinculados a uma matéria, com descrição, prazo, prioridade, edição e conclusão.                         |
 | **Checklists**     | Listas gerais ou por matéria, seções reordenáveis, movimentação de itens, inclusão em massa e acompanhamento de progresso. |
 | **Foco**           | Pomodoro com ciclos configuráveis e cronômetro global ou por matéria, com persistência e widget flutuante.                  |
-| **Cadernos**       | Cadernos por matéria, múltiplas anotações, salvamento automático, renomeação e exclusão.                                   |
+| **Cadernos**       | Notas por matéria com salvamento automático, formatação leve, listas e expressões matemáticas visuais.                    |
 | **Anotações**      | Cards Markdown gerais, favoritos, destaque, grupos, slides e painel flutuante, compacto ou encaixado.                      |
 | **Flashcards**     | Cartões organizados por blocos, revisão interativa, importação em massa e controle dos cartões dominados.                  |
 | **Biblioteca**     | Links para vídeos, PDFs, artigos, documentos e pastas, organizados em coleções e tags.                                      |
@@ -145,6 +145,12 @@ O sistema segue algumas regras para preservar a consistência das sessões:
 * Timestamps e checkpoints reconstroem o tempo após recarregamentos e encerramentos inesperados.
 * O cálculo utiliza timestamps em vez de depender apenas dos intervalos visuais do navegador.
 * Ao alcançar zero ou o limite máximo, o relógio pausa e registra a sessão.
+
+## Cadernos e escrita matemática
+
+Os cadernos de cada matéria preservam a escrita simples em um editor visual contínuo: destaque com `*texto*`, conteúdo riscado com `~texto~` e listas numeradas ou com marcadores aparecem formatados durante a própria edição, sem alternar entre escrever e visualizar. As marcações antigas com dois símbolos de cada lado continuam compatíveis.
+
+Um construtor matemático permite montar visualmente frações, raízes, potências, integrais e somatórios, inserindo a expressão na linha ou em um bloco destacado sem exigir que o usuário escreva LaTeX manualmente.
 
 ## Anotações Markdown sempre à vista
 
@@ -417,6 +423,7 @@ src/
 * [Vite](https://vite.dev/)
 * [Lucide React](https://lucide.dev/)
 * [React Markdown](https://github.com/remarkjs/react-markdown) e [remark-gfm](https://github.com/remarkjs/remark-gfm)
+* [MathLive](https://mathlive.io/) para edição visual e renderização de expressões matemáticas
 * [IndexedDB](https://developer.mozilla.org/docs/Web/API/IndexedDB_API)
 * [Cloudflare Workers](https://developers.cloudflare.com/workers/)
 * CSS responsivo sem biblioteca visual
