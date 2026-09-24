@@ -1,76 +1,1418 @@
-import { AlertCircle, CalendarClock, ChevronLeft, ChevronRight, ClipboardCopy, Clock3, Copy, Download, Edit3, FileInput, List, Plus, RotateCcw, Sparkles, Trash2, X } from "lucide-react";
+import {
+  AlertCircle,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCopy,
+  Clock3,
+  Copy,
+  Download,
+  Edit3,
+  FileInput,
+  List,
+  Plus,
+  RotateCcw,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
-import { LIMITS, SUBJECT_COLORS, localDayKey, subjectName, type AppData, type ScheduleCategory, type ScheduleEntry, type Subject } from "../data";
-import { exportScheduleText, normalizeScheduleLabel, parseScheduleText, SCHEDULE_IMPORT_EXAMPLE, type ScheduleParseResult } from "../scheduleParser";
+import {
+  LIMITS,
+  SUBJECT_COLORS,
+  localDayKey,
+  subjectName,
+  type AppData,
+  type ScheduleCategory,
+  type ScheduleEntry,
+  type Subject,
+} from "../data";
+import {
+  exportScheduleText,
+  normalizeScheduleLabel,
+  parseScheduleText,
+  SCHEDULE_IMPORT_EXAMPLE,
+  type ScheduleParseResult,
+} from "../scheduleParser";
+import { useDialog } from "../components/DialogModal";
 
-const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
-const CATEGORIES: { id: Exclude<ScheduleCategory, "assignment">; label: string }[] = [{ id: "study", label: "Estudo" }, { id: "review", label: "Revisão" }, { id: "break", label: "Pausa" }, { id: "personal", label: "Pessoal" }, { id: "other", label: "Outro" }];
-const minutes = (value: string) => value ? Number(value.slice(0, 2)) * 60 + Number(value.slice(3)) : Number.POSITIVE_INFINITY;
+const DAYS = [
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+  "Domingo",
+];
+const CATEGORIES: {
+  id: Exclude<ScheduleCategory, "assignment">;
+  label: string;
+}[] = [
+  { id: "study", label: "Estudo" },
+  { id: "review", label: "Revisão" },
+  { id: "break", label: "Pausa" },
+  { id: "personal", label: "Pessoal" },
+  { id: "other", label: "Outro" },
+];
+const minutes = (value: string) =>
+  value
+    ? Number(value.slice(0, 2)) * 60 + Number(value.slice(3))
+    : Number.POSITIVE_INFINITY;
 const weekday = (date: Date) => (date.getDay() + 6) % 7;
 const fromKey = (value: string) => new Date(`${value}T12:00:00`);
-const addDays = (value: Date, amount: number) => { const date = new Date(value); date.setDate(date.getDate() + amount); date.setHours(12, 0, 0, 0); return date; };
+const addDays = (value: Date, amount: number) => {
+  const date = new Date(value);
+  date.setDate(date.getDate() + amount);
+  date.setHours(12, 0, 0, 0);
+  return date;
+};
 const weekStartOf = (value: Date) => addDays(value, -weekday(value));
-const formatDate = (value: string, long = false) => new Intl.DateTimeFormat("pt-BR", long ? { weekday: "long", day: "2-digit", month: "long" } : { day: "2-digit", month: "short" }).format(fromKey(value));
-const formatRange = (dates: Date[]) => `${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(dates[0])} — ${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(dates[6])}`;
-const scheduleIdentity = (entry: Pick<ScheduleEntry, "title" | "date" | "day" | "startTime" | "endTime" | "timeDefined" | "category" | "subjectId">) => [normalizeScheduleLabel(entry.title), entry.date ? `data:${entry.date}` : `dia:${entry.day}`, entry.timeDefined === false ? "sem-horario" : `${entry.startTime}-${entry.endTime}`, entry.category, entry.subjectId ?? "geral"].join("|");
-type Draft = { title: string; description: string; startTime: string; endTime: string; category: ScheduleCategory; subjectId: string; days: number[]; date?: string; assignmentId?: string; recurrence: "once" | "weekly" };
-const freshDraft = (date: string): Draft => ({ title: "", description: "", startTime: "14:00", endTime: "15:00", category: "study", subjectId: "", days: [weekday(fromKey(date))], date, recurrence: "once" });
+const formatDate = (value: string, long = false) =>
+  new Intl.DateTimeFormat(
+    "pt-BR",
+    long
+      ? { weekday: "long", day: "2-digit", month: "long" }
+      : { day: "2-digit", month: "short" },
+  ).format(fromKey(value));
+const formatRange = (dates: Date[]) =>
+  `${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(dates[0])} — ${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(dates[6])}`;
+const scheduleIdentity = (
+  entry: Pick<
+    ScheduleEntry,
+    | "title"
+    | "date"
+    | "day"
+    | "startTime"
+    | "endTime"
+    | "timeDefined"
+    | "category"
+    | "subjectId"
+  >,
+) =>
+  [
+    normalizeScheduleLabel(entry.title),
+    entry.date ? `data:${entry.date}` : `dia:${entry.day}`,
+    entry.timeDefined === false
+      ? "sem-horario"
+      : `${entry.startTime}-${entry.endTime}`,
+    entry.category,
+    entry.subjectId ?? "geral",
+  ].join("|");
+type Draft = {
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  category: ScheduleCategory;
+  subjectId: string;
+  days: number[];
+  date?: string;
+  assignmentId?: string;
+  recurrence: "once" | "weekly";
+};
+const freshDraft = (date: string): Draft => ({
+  title: "",
+  description: "",
+  startTime: "14:00",
+  endTime: "15:00",
+  category: "study",
+  subjectId: "",
+  days: [weekday(fromKey(date))],
+  date,
+  recurrence: "once",
+});
 
-function Cronograma({ data, mutate }: { data: AppData; mutate: (updater: (data: AppData) => AppData) => void }) {
-  const todayKey = localDayKey(new Date()); const [viewedWeek, setViewedWeek] = useState(() => weekStartOf(new Date())); const [selectedDate, setSelectedDate] = useState(todayKey); const [view, setView] = useState<"day" | "week">("day");
-  const [editing, setEditing] = useState<string>(); const [draft, setDraft] = useState<Draft>(); const [movedTo, setMovedTo] = useState<string>();
-  const [transferMode, setTransferMode] = useState<"import" | "export">(); const [transferText, setTransferText] = useState(""); const [transferPreview, setTransferPreview] = useState<ScheduleParseResult>(); const [subjectResolutions, setSubjectResolutions] = useState<Record<string, string>>({});
-  const weekDates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(viewedWeek, index)), [viewedWeek]); const weekKeys = weekDates.map(localDayKey); const weekStartKey = weekKeys[0]; const weekEndKey = weekKeys[6];
-  const pendingIds = useMemo(() => new Set(data.assignments.filter((item) => !item.completed).map((item) => item.id)), [data.assignments]);
-  const entries = useMemo(() => data.scheduleEntries.filter((entry) => !entry.assignmentId || pendingIds.has(entry.assignmentId)), [data.scheduleEntries, pendingIds]);
-  const entriesFor = (dateKey: string) => { const day = weekday(fromKey(dateKey)); return entries.filter((entry) => entry.date ? entry.date === dateKey : entry.day === day).slice().sort((a, b) => Number(a.timeDefined === false) - Number(b.timeDefined === false) || minutes(a.startTime) - minutes(b.startTime) || a.title.localeCompare(b.title, "pt-BR")); };
-  const selectedEntries = entriesFor(selectedDate); const selectedEditable = selectedEntries.filter((entry) => !entry.assignmentId);
-  const now = new Date(); const nowMinutes = now.getHours() * 60 + now.getMinutes(); const current = entriesFor(todayKey).find((entry) => entry.timeDefined !== false && minutes(entry.startTime) <= nowMinutes && minutes(entry.endTime) > nowMinutes);
-  const occurrenceTime = (entry: ScheduleEntry) => { if (entry.date) return new Date(`${entry.date}T${entry.timeDefined === false ? "23:59" : entry.startTime}:00`).getTime(); const date = new Date(); let offset = entry.day - weekday(date); if (offset < 0 || offset === 0 && minutes(entry.startTime) <= nowMinutes) offset += 7; date.setDate(date.getDate() + offset); const hasTime = entry.timeDefined !== false && /^\d{2}:\d{2}$/.test(entry.startTime); date.setHours(hasTime ? Number(entry.startTime.slice(0, 2)) : 23, hasTime ? Number(entry.startTime.slice(3)) : 59, 0, 0); return date.getTime(); };
-  const next = entries.filter((entry) => entry.date ? entry.date >= todayKey : !!entry.startTime).slice().sort((a, b) => occurrenceTime(a) - occurrenceTime(b))[0]; const featured = current ?? next;
-  const upcomingWorks = entries.filter((entry) => entry.assignmentId && entry.date && entry.date >= todayKey).sort((a, b) => a.date!.localeCompare(b.date!)).slice(0, 4);
-  const selectWeek = (start: Date, preferred?: string) => { const normalized = weekStartOf(start); const first = localDayKey(normalized); const last = localDayKey(addDays(normalized, 6)); setViewedWeek(normalized); setSelectedDate(preferred && preferred >= first && preferred <= last ? preferred : first); };
-  const openNew = (date = selectedDate) => { setEditing(undefined); setDraft(freshDraft(date)); };
-  const openEdit = (entry: ScheduleEntry) => { setEditing(entry.id); setDraft({ title: entry.title, description: entry.description, startTime: entry.startTime, endTime: entry.endTime, category: entry.category, subjectId: entry.category === "study" || entry.category === "review" || entry.category === "assignment" ? entry.subjectId ?? "" : "", days: [entry.day], date: entry.date, assignmentId: entry.assignmentId, recurrence: entry.date ? "once" : "weekly" }); };
-  const save = () => {
-    if (!draft || !draft.title.trim()) return; const hasTime = !!draft.startTime && !!draft.endTime; if (draft.recurrence === "once" && !draft.date) return window.alert("Escolha a data do bloco único."); if (!!draft.startTime !== !!draft.endTime) return window.alert("Defina tanto o início quanto o fim do bloco."); if (hasTime && minutes(draft.endTime) - minutes(draft.startTime) < 5) return window.alert("O bloco precisa ter ao menos 5 minutos.");
-    const targetDays = draft.recurrence === "once" && draft.date ? [weekday(fromKey(draft.date))] : draft.days; const targetDate = draft.recurrence === "once" ? draft.date : undefined; const conflicts = hasTime && entries.some((entry) => entry.id !== editing && entry.timeDefined !== false && targetDays.includes(entry.day) && (targetDate ? !entry.date || targetDate === entry.date : !entry.date) && minutes(draft.startTime) < minutes(entry.endTime) && minutes(draft.endTime) > minutes(entry.startTime)); if (conflicts && !window.confirm("Este horário se sobrepõe a outro bloco. Deseja salvar mesmo assim?")) return;
-    const previous = editing ? data.scheduleEntries.find((entry) => entry.id === editing) : undefined; const stamp = new Date().toISOString(); mutate((currentData) => { if (editing) return { ...currentData, scheduleEntries: currentData.scheduleEntries.map((entry) => entry.id === editing ? { ...entry, title: draft.title.trim().slice(0, LIMITS.scheduleTitle), description: draft.description.trim().slice(0, LIMITS.scheduleDescription), startTime: draft.startTime, endTime: draft.endTime, timeDefined: hasTime, category: draft.category, subjectId: draft.subjectId || undefined, day: targetDays[0], date: entry.assignmentId ? entry.date : targetDate, updatedAt: stamp } : entry) }; const room = LIMITS.scheduleEntries - currentData.scheduleEntries.length; const created: ScheduleEntry[] = targetDays.slice(0, room).map((day) => ({ id: crypto.randomUUID(), title: draft.title.trim().slice(0, LIMITS.scheduleTitle), description: draft.description.trim().slice(0, LIMITS.scheduleDescription), startTime: draft.startTime, endTime: draft.endTime, timeDefined: hasTime, category: draft.category, subjectId: draft.subjectId || undefined, day, date: targetDate, createdAt: stamp, updatedAt: stamp })); return { ...currentData, scheduleEntries: [...currentData.scheduleEntries, ...created] }; });
-    if (targetDate && previous?.date !== targetDate && (targetDate < weekStartKey || targetDate > weekEndKey)) setMovedTo(targetDate); setDraft(undefined); setEditing(undefined);
+function Cronograma({
+  data,
+  mutate,
+}: {
+  data: AppData;
+  mutate: (updater: (data: AppData) => AppData) => void;
+}) {
+  const dialog = useDialog();
+  const todayKey = localDayKey(new Date());
+  const [viewedWeek, setViewedWeek] = useState(() => weekStartOf(new Date()));
+  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [view, setView] = useState<"day" | "week">("day");
+  const [editing, setEditing] = useState<string>();
+  const [draft, setDraft] = useState<Draft>();
+  const [movedTo, setMovedTo] = useState<string>();
+  const [transferMode, setTransferMode] = useState<"import" | "export">();
+  const [transferText, setTransferText] = useState("");
+  const [transferPreview, setTransferPreview] = useState<ScheduleParseResult>();
+  const [subjectResolutions, setSubjectResolutions] = useState<
+    Record<string, string>
+  >({});
+  const weekDates = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => addDays(viewedWeek, index)),
+    [viewedWeek],
+  );
+  const weekKeys = weekDates.map(localDayKey);
+  const weekStartKey = weekKeys[0];
+  const weekEndKey = weekKeys[6];
+  const pendingIds = useMemo(
+    () =>
+      new Set(
+        data.assignments
+          .filter((item) => !item.completed)
+          .map((item) => item.id),
+      ),
+    [data.assignments],
+  );
+  const entries = useMemo(
+    () =>
+      data.scheduleEntries.filter(
+        (entry) => !entry.assignmentId || pendingIds.has(entry.assignmentId),
+      ),
+    [data.scheduleEntries, pendingIds],
+  );
+  const entriesFor = (dateKey: string) => {
+    const day = weekday(fromKey(dateKey));
+    return entries
+      .filter((entry) =>
+        entry.date ? entry.date === dateKey : entry.day === day,
+      )
+      .slice()
+      .sort(
+        (a, b) =>
+          Number(a.timeDefined === false) - Number(b.timeDefined === false) ||
+          minutes(a.startTime) - minutes(b.startTime) ||
+          a.title.localeCompare(b.title, "pt-BR"),
+      );
   };
-  const remove = (entry: ScheduleEntry) => { if (entry.assignmentId) return window.alert("Este bloco acompanha um trabalho. Para removê-lo, conclua ou exclua o trabalho na área Trabalhos."); const message = entry.date ? "Excluir este bloco único?" : `Excluir a recorrência de ${DAYS[entry.day]}? Ela deixará de aparecer em todas as semanas.`; if (window.confirm(message)) mutate((current) => ({ ...current, scheduleEntries: current.scheduleEntries.filter((item) => item.id !== entry.id) })); };
-  const duplicate = (entry: ScheduleEntry) => { if (data.scheduleEntries.length >= LIMITS.scheduleEntries) return; const date = entry.date ? localDayKey(addDays(fromKey(entry.date), 1)) : undefined; const day = date ? weekday(fromKey(date)) : (entry.day + 1) % 7; const stamp = new Date().toISOString(); mutate((current) => ({ ...current, scheduleEntries: [...current.scheduleEntries, { ...entry, id: crypto.randomUUID(), assignmentId: undefined, date, day, title: `${entry.title} (cópia)`, createdAt: stamp, updatedAt: stamp }] })); };
-  const copyDay = () => { if (!selectedEntries.length) return; const nextDate = localDayKey(addDays(fromKey(selectedDate), 1)); if (!window.confirm(`Copiar os ${selectedEntries.length} blocos para ${formatDate(nextDate)}?`)) return; mutate((current) => { const room = LIMITS.scheduleEntries - current.scheduleEntries.length; const stamp = new Date().toISOString(); return { ...current, scheduleEntries: [...current.scheduleEntries, ...selectedEntries.slice(0, room).map((entry) => ({ ...entry, id: crypto.randomUUID(), assignmentId: undefined, date: entry.date ? nextDate : undefined, day: weekday(fromKey(nextDate)), createdAt: stamp, updatedAt: stamp }))] }; }); };
-  const clearDay = () => { if (!selectedEditable.length || !window.confirm(`Excluir os ${selectedEditable.length} blocos manuais de ${formatDate(selectedDate)}? Blocos recorrentes serão removidos de todas as semanas.`) || !window.confirm("Esta ação não pode ser desfeita. Confirma?")) return; const ids = new Set(selectedEditable.map((entry) => entry.id)); mutate((current) => ({ ...current, scheduleEntries: current.scheduleEntries.filter((entry) => !ids.has(entry.id)) })); };
-  const clearWeek = () => { const removable = entries.filter((entry) => !entry.assignmentId && entry.date && entry.date >= weekStartKey && entry.date <= weekEndKey); if (!removable.length || !window.confirm(`Excluir os ${removable.length} blocos únicos desta semana? Recorrências serão preservadas.`) || !window.confirm("Confirma definitivamente?")) return; const ids = new Set(removable.map((entry) => entry.id)); mutate((current) => ({ ...current, scheduleEntries: current.scheduleEntries.filter((entry) => !ids.has(entry.id)) })); };
-  const openImport = () => { setTransferMode("import"); setTransferText(""); setTransferPreview(undefined); setSubjectResolutions({}); };
-  const openExport = () => { setTransferMode("export"); setTransferText(exportScheduleText(data.scheduleEntries, data.subjects)); setTransferPreview(undefined); };
-  const closeTransfer = () => { setTransferMode(undefined); setTransferPreview(undefined); setSubjectResolutions({}); };
-  const previewImport = () => { const result = parseScheduleText(transferText, data.subjects); setTransferPreview(result); setSubjectResolutions((current) => Object.fromEntries(result.subjectIssues.map((issue) => [issue.normalizedName, current[issue.normalizedName] ?? issue.suggestionId ?? ""]))); return result; };
-  const importSchedule = () => {
-    const result = transferPreview ?? previewImport(); if (result.errors.length || !result.blocks.length) return;
-    const resolutionFor = (name: string) => { const normalizedName = normalizeScheduleLabel(name); return subjectResolutions[normalizedName] ?? result.subjectIssues.find((issue) => issue.normalizedName === normalizedName)?.suggestionId ?? ""; }; if (result.subjectIssues.some((issue) => !resolutionFor(issue.name))) return window.alert("Escolha como tratar cada matéria não reconhecida antes de importar.");
-    const createIssues = result.subjectIssues.filter((issue) => resolutionFor(issue.name) === "__create"); if (data.subjects.length + createIssues.length > LIMITS.subjects) return window.alert(`Não há espaço para criar todas as matérias. O limite atual é ${LIMITS.subjects}.`);
-    const stamp = new Date().toISOString(); const createdSubjects = new Map<string, Subject>(); createIssues.forEach((issue, index) => createdSubjects.set(issue.normalizedName, { id: crypto.randomUUID(), title: issue.name.trim().slice(0, LIMITS.subjectTitle), color: SUBJECT_COLORS[(data.subjects.length + index) % SUBJECT_COLORS.length], createdAt: stamp }));
-    const candidates: ScheduleEntry[] = []; result.blocks.forEach((block) => block.days.forEach((day) => { const resolution = block.requestedSubject ? resolutionFor(block.requestedSubject) : undefined; const resolvedSubjectId = block.subjectId ?? (resolution === "__general" ? undefined : resolution === "__create" ? createdSubjects.get(normalizeScheduleLabel(block.requestedSubject!))?.id : resolution); candidates.push({ id: crypto.randomUUID(), title: block.title.slice(0, LIMITS.scheduleTitle), description: block.description.slice(0, LIMITS.scheduleDescription), startTime: block.startTime, endTime: block.endTime, timeDefined: block.timeDefined, category: block.category, subjectId: resolvedSubjectId || undefined, day, date: block.date, createdAt: stamp, updatedAt: stamp }); }));
-    const known = new Set(data.scheduleEntries.map(scheduleIdentity)); const unique = candidates.filter((entry) => { const identity = scheduleIdentity(entry); if (known.has(identity)) return false; known.add(identity); return true; }); const duplicates = candidates.length - unique.length; if (!unique.length) return window.alert(`Nenhum bloco novo foi encontrado. ${duplicates} ${duplicates === 1 ? "duplicata foi ignorada" : "duplicatas foram ignoradas"}.`);
-    const room = LIMITS.scheduleEntries - data.scheduleEntries.length; if (room <= 0) return window.alert(`O limite de ${LIMITS.scheduleEntries} blocos já foi atingido.`); const amount = Math.min(unique.length, room); const usedSubjectIds = new Set(unique.map((entry) => entry.subjectId).filter(Boolean)); const subjectsToCreate = [...createdSubjects.values()].filter((subject) => usedSubjectIds.has(subject.id)); const duplicateNotice = duplicates ? ` ${duplicates} ${duplicates === 1 ? "duplicata será ignorada" : "duplicatas serão ignoradas"}.` : ""; if (!window.confirm(`Adicionar ${amount} ${amount === 1 ? "bloco novo" : "blocos novos"}${subjectsToCreate.length ? ` e criar ${subjectsToCreate.length} ${subjectsToCreate.length === 1 ? "matéria" : "matérias"}` : ""}?${duplicateNotice}`)) return;
-    mutate((current) => ({ ...current, subjects: [...current.subjects, ...subjectsToCreate], scheduleEntries: [...current.scheduleEntries, ...unique.slice(0, room)] })); const firstDate = unique.map((block) => block.date).filter((date): date is string => !!date).sort()[0]; if (firstDate) selectWeek(fromKey(firstDate), firstDate); closeTransfer(); const omitted = unique.length - amount; if (duplicates || omitted) window.alert(`${amount} ${amount === 1 ? "bloco foi importado" : "blocos foram importados"}.${duplicates ? ` ${duplicates} ${duplicates === 1 ? "duplicata foi descartada" : "duplicatas foram descartadas"}.` : ""}${omitted ? ` ${omitted} excederam o limite de ${LIMITS.scheduleEntries}.` : ""}`);
+  const selectedEntries = entriesFor(selectedDate);
+  const selectedEditable = selectedEntries.filter(
+    (entry) => !entry.assignmentId,
+  );
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const current = entriesFor(todayKey).find(
+    (entry) =>
+      entry.timeDefined !== false &&
+      minutes(entry.startTime) <= nowMinutes &&
+      minutes(entry.endTime) > nowMinutes,
+  );
+  const occurrenceTime = (entry: ScheduleEntry) => {
+    if (entry.date)
+      return new Date(
+        `${entry.date}T${entry.timeDefined === false ? "23:59" : entry.startTime}:00`,
+      ).getTime();
+    const date = new Date();
+    let offset = entry.day - weekday(date);
+    if (offset < 0 || (offset === 0 && minutes(entry.startTime) <= nowMinutes))
+      offset += 7;
+    date.setDate(date.getDate() + offset);
+    const hasTime =
+      entry.timeDefined !== false && /^\d{2}:\d{2}$/.test(entry.startTime);
+    date.setHours(
+      hasTime ? Number(entry.startTime.slice(0, 2)) : 23,
+      hasTime ? Number(entry.startTime.slice(3)) : 59,
+      0,
+      0,
+    );
+    return date.getTime();
   };
-  const copyExport = async () => { if (!transferText) return; try { await navigator.clipboard.writeText(transferText); window.alert("Cronograma copiado para a área de transferência."); } catch { window.prompt("Copie o cronograma abaixo:", transferText); } };
-  const downloadExport = () => { if (!transferText) return; const url = URL.createObjectURL(new Blob([transferText], { type: "text/plain;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = `omnidesk-cronograma-${todayKey}.txt`; link.click(); URL.revokeObjectURL(url); };
-  const timeLabel = (entry: ScheduleEntry) => entry.timeDefined === false ? "Horário a definir" : `${entry.startTime} — ${entry.endTime}`;
-  const renderEntry = (entry: ScheduleEntry, dateKey: string, compact = false) => <article className={`schedule-agenda-card ${entry.category} ${entry.date && !entry.assignmentId ? "one-off" : "recurring"} ${entry.timeDefined === false ? "unscheduled" : ""} ${current?.id === entry.id && dateKey === todayKey ? "is-now" : ""}`} key={`${entry.id}-${dateKey}`} onClick={() => openEdit(entry)}><div className="agenda-time">{entry.timeDefined === false ? <AlertCircle /> : <Clock3 />}<strong>{entry.timeDefined === false ? "A definir" : entry.startTime}</strong>{entry.timeDefined !== false && <small>{entry.endTime}</small>}</div><div className="agenda-copy"><span>{entry.assignmentId ? "TRABALHO" : entry.date ? "BLOCO ÚNICO" : "RECORRENTE"}{current?.id === entry.id && dateKey === todayKey ? " · AGORA" : ""}</span><h3>{entry.title}</h3>{!compact && entry.description && <p>{entry.description}</p>}<small>{entry.subjectId ? subjectName(data, entry.subjectId) : CATEGORIES.find((item) => item.id === entry.category)?.label}{entry.date ? ` · ${formatDate(entry.date)}` : ` · toda ${DAYS[entry.day].toLocaleLowerCase("pt-BR")}`}</small></div><div className="agenda-actions"><button title="Duplicar" onClick={(event) => { event.stopPropagation(); duplicate(entry); }}><Copy /></button><button title="Editar"><Edit3 /></button><button className="danger" title="Excluir" onClick={(event) => { event.stopPropagation(); remove(entry); }}><Trash2 /></button></div></article>;
+  const next = entries
+    .filter((entry) =>
+      entry.date ? entry.date >= todayKey : !!entry.startTime,
+    )
+    .slice()
+    .sort((a, b) => occurrenceTime(a) - occurrenceTime(b))[0];
+  const featured = current ?? next;
+  const upcomingWorks = entries
+    .filter(
+      (entry) => entry.assignmentId && entry.date && entry.date >= todayKey,
+    )
+    .sort((a, b) => a.date!.localeCompare(b.date!))
+    .slice(0, 4);
+  const selectWeek = (start: Date, preferred?: string) => {
+    const normalized = weekStartOf(start);
+    const first = localDayKey(normalized);
+    const last = localDayKey(addDays(normalized, 6));
+    setViewedWeek(normalized);
+    setSelectedDate(
+      preferred && preferred >= first && preferred <= last ? preferred : first,
+    );
+  };
+  const openNew = (date = selectedDate) => {
+    setEditing(undefined);
+    setDraft(freshDraft(date));
+  };
+  const openEdit = (entry: ScheduleEntry) => {
+    setEditing(entry.id);
+    setDraft({
+      title: entry.title,
+      description: entry.description,
+      startTime: entry.startTime,
+      endTime: entry.endTime,
+      category: entry.category,
+      subjectId:
+        entry.category === "study" ||
+        entry.category === "review" ||
+        entry.category === "assignment"
+          ? (entry.subjectId ?? "")
+          : "",
+      days: [entry.day],
+      date: entry.date,
+      assignmentId: entry.assignmentId,
+      recurrence: entry.date ? "once" : "weekly",
+    });
+  };
+  const save = async () => {
+    if (!draft || !draft.title.trim()) return;
+    const hasTime = !!draft.startTime && !!draft.endTime;
+    if (draft.recurrence === "once" && !draft.date) {
+      await dialog.alert({
+        title: "Data obrigatória",
+        message: "Escolha a data do bloco único.",
+      });
+      return;
+    }
+    if (!!draft.startTime !== !!draft.endTime) {
+      await dialog.alert({
+        title: "Horário incompleto",
+        message: "Defina tanto o início quanto o fim do bloco.",
+      });
+      return;
+    }
+    if (hasTime && minutes(draft.endTime) - minutes(draft.startTime) < 5) {
+      await dialog.alert({
+        title: "Duração muito curta",
+        message: "O bloco precisa ter ao menos 5 minutos.",
+      });
+      return;
+    }
+    const targetDays =
+      draft.recurrence === "once" && draft.date
+        ? [weekday(fromKey(draft.date))]
+        : draft.days;
+    const targetDate = draft.recurrence === "once" ? draft.date : undefined;
+    const conflicts =
+      hasTime &&
+      entries.some(
+        (entry) =>
+          entry.id !== editing &&
+          entry.timeDefined !== false &&
+          targetDays.includes(entry.day) &&
+          (targetDate
+            ? !entry.date || targetDate === entry.date
+            : !entry.date) &&
+          minutes(draft.startTime) < minutes(entry.endTime) &&
+          minutes(draft.endTime) > minutes(entry.startTime),
+      );
+    if (
+      conflicts &&
+      !(await dialog.confirm({
+        title: "Conflito de horários",
+        message:
+          "Este horário se sobrepõe a outro bloco. Deseja salvar mesmo assim?",
+        confirmText: "Salvar mesmo assim",
+      }))
+    )
+      return;
+    const previous = editing
+      ? data.scheduleEntries.find((entry) => entry.id === editing)
+      : undefined;
+    const stamp = new Date().toISOString();
+    mutate((currentData) => {
+      if (editing)
+        return {
+          ...currentData,
+          scheduleEntries: currentData.scheduleEntries.map((entry) =>
+            entry.id === editing
+              ? {
+                  ...entry,
+                  title: draft.title.trim().slice(0, LIMITS.scheduleTitle),
+                  description: draft.description
+                    .trim()
+                    .slice(0, LIMITS.scheduleDescription),
+                  startTime: draft.startTime,
+                  endTime: draft.endTime,
+                  timeDefined: hasTime,
+                  category: draft.category,
+                  subjectId: draft.subjectId || undefined,
+                  day: targetDays[0],
+                  date: entry.assignmentId ? entry.date : targetDate,
+                  updatedAt: stamp,
+                }
+              : entry,
+          ),
+        };
+      const room = LIMITS.scheduleEntries - currentData.scheduleEntries.length;
+      const created: ScheduleEntry[] = targetDays
+        .slice(0, room)
+        .map((day) => ({
+          id: crypto.randomUUID(),
+          title: draft.title.trim().slice(0, LIMITS.scheduleTitle),
+          description: draft.description
+            .trim()
+            .slice(0, LIMITS.scheduleDescription),
+          startTime: draft.startTime,
+          endTime: draft.endTime,
+          timeDefined: hasTime,
+          category: draft.category,
+          subjectId: draft.subjectId || undefined,
+          day,
+          date: targetDate,
+          createdAt: stamp,
+          updatedAt: stamp,
+        }));
+      return {
+        ...currentData,
+        scheduleEntries: [...currentData.scheduleEntries, ...created],
+      };
+    });
+    if (
+      targetDate &&
+      previous?.date !== targetDate &&
+      (targetDate < weekStartKey || targetDate > weekEndKey)
+    )
+      setMovedTo(targetDate);
+    setDraft(undefined);
+    setEditing(undefined);
+  };
+  const remove = async (entry: ScheduleEntry) => {
+    if (entry.assignmentId) {
+      await dialog.alert({
+        title: "Bloco vinculado a trabalho",
+        message:
+          "Este bloco acompanha um trabalho. Para removê-lo, conclua ou exclua o trabalho na área Trabalhos.",
+      });
+      return;
+    }
+    const message = entry.date
+      ? "Excluir este bloco único?"
+      : `Excluir a recorrência de ${DAYS[entry.day]}? Ela deixará de aparecer em todas as semanas.`;
+    if (
+      await dialog.confirm({
+        title: message,
+        danger: true,
+        confirmText: "Excluir bloco",
+      })
+    )
+      mutate((current) => ({
+        ...current,
+        scheduleEntries: current.scheduleEntries.filter(
+          (item) => item.id !== entry.id,
+        ),
+      }));
+  };
+  const duplicate = (entry: ScheduleEntry) => {
+    if (data.scheduleEntries.length >= LIMITS.scheduleEntries) return;
+    const date = entry.date
+      ? localDayKey(addDays(fromKey(entry.date), 1))
+      : undefined;
+    const day = date ? weekday(fromKey(date)) : (entry.day + 1) % 7;
+    const stamp = new Date().toISOString();
+    mutate((current) => ({
+      ...current,
+      scheduleEntries: [
+        ...current.scheduleEntries,
+        {
+          ...entry,
+          id: crypto.randomUUID(),
+          assignmentId: undefined,
+          date,
+          day,
+          title: `${entry.title} (cópia)`,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+      ],
+    }));
+  };
+  const copyDay = async () => {
+    if (!selectedEntries.length) return;
+    const nextDate = localDayKey(addDays(fromKey(selectedDate), 1));
+    if (
+      !(await dialog.confirm({
+        title: `Copiar blocos para ${formatDate(nextDate)}?`,
+        message: `Deseja copiar os ${selectedEntries.length} blocos deste dia para a data seguinte?`,
+        confirmText: "Copiar blocos",
+      }))
+    )
+      return;
+    mutate((current) => {
+      const room = LIMITS.scheduleEntries - current.scheduleEntries.length;
+      const stamp = new Date().toISOString();
+      return {
+        ...current,
+        scheduleEntries: [
+          ...current.scheduleEntries,
+          ...selectedEntries
+            .slice(0, room)
+            .map((entry) => ({
+              ...entry,
+              id: crypto.randomUUID(),
+              assignmentId: undefined,
+              date: entry.date ? nextDate : undefined,
+              day: weekday(fromKey(nextDate)),
+              createdAt: stamp,
+              updatedAt: stamp,
+            })),
+        ],
+      };
+    });
+  };
+  const clearDay = async () => {
+    if (!selectedEditable.length) return;
+    if (
+      !(await dialog.confirm({
+        title: `Limpar ${formatDate(selectedDate)}?`,
+        message: `Deseja excluir os ${selectedEditable.length} blocos manuais deste dia? Blocos recorrentes serão removidos de todas as semanas. Esta ação não pode ser desfeita.`,
+        danger: true,
+        confirmText: "Excluir blocos",
+      }))
+    )
+      return;
+    const ids = new Set(selectedEditable.map((entry) => entry.id));
+    mutate((current) => ({
+      ...current,
+      scheduleEntries: current.scheduleEntries.filter(
+        (entry) => !ids.has(entry.id),
+      ),
+    }));
+  };
+  const clearWeek = async () => {
+    const removable = entries.filter(
+      (entry) =>
+        !entry.assignmentId &&
+        entry.date &&
+        entry.date >= weekStartKey &&
+        entry.date <= weekEndKey,
+    );
+    if (!removable.length) return;
+    if (
+      !(await dialog.confirm({
+        title: "Limpar blocos desta semana?",
+        message: `Deseja excluir os ${removable.length} blocos únicos desta semana? Recorrências serão preservadas.`,
+        danger: true,
+        confirmText: "Excluir da semana",
+      }))
+    )
+      return;
+    const ids = new Set(removable.map((entry) => entry.id));
+    mutate((current) => ({
+      ...current,
+      scheduleEntries: current.scheduleEntries.filter(
+        (entry) => !ids.has(entry.id),
+      ),
+    }));
+  };
+  const openImport = () => {
+    setTransferMode("import");
+    setTransferText("");
+    setTransferPreview(undefined);
+    setSubjectResolutions({});
+  };
+  const openExport = () => {
+    setTransferMode("export");
+    setTransferText(exportScheduleText(data.scheduleEntries, data.subjects));
+    setTransferPreview(undefined);
+  };
+  const closeTransfer = () => {
+    setTransferMode(undefined);
+    setTransferPreview(undefined);
+    setSubjectResolutions({});
+  };
+  const previewImport = () => {
+    const result = parseScheduleText(transferText, data.subjects);
+    setTransferPreview(result);
+    setSubjectResolutions((current) =>
+      Object.fromEntries(
+        result.subjectIssues.map((issue) => [
+          issue.normalizedName,
+          current[issue.normalizedName] ?? issue.suggestionId ?? "",
+        ]),
+      ),
+    );
+    return result;
+  };
+  const importSchedule = async () => {
+    const result = transferPreview ?? previewImport();
+    if (result.errors.length || !result.blocks.length) return;
+    const resolutionFor = (name: string) => {
+      const normalizedName = normalizeScheduleLabel(name);
+      return (
+        subjectResolutions[normalizedName] ??
+        result.subjectIssues.find(
+          (issue) => issue.normalizedName === normalizedName,
+        )?.suggestionId ??
+        ""
+      );
+    };
+    if (result.subjectIssues.some((issue) => !resolutionFor(issue.name))) {
+      await dialog.alert({
+        title: "Matérias pendentes",
+        message:
+          "Escolha como tratar cada matéria não reconhecida antes de importar.",
+      });
+      return;
+    }
+    const createIssues = result.subjectIssues.filter(
+      (issue) => resolutionFor(issue.name) === "__create",
+    );
+    if (data.subjects.length + createIssues.length > LIMITS.subjects) {
+      await dialog.alert({
+        title: "Limite atingido",
+        message: `Não há espaço para criar todas as matérias. O limite atual é ${LIMITS.subjects}.`,
+      });
+      return;
+    }
+    const stamp = new Date().toISOString();
+    const createdSubjects = new Map<string, Subject>();
+    createIssues.forEach((issue, index) =>
+      createdSubjects.set(issue.normalizedName, {
+        id: crypto.randomUUID(),
+        title: issue.name.trim().slice(0, LIMITS.subjectTitle),
+        color:
+          SUBJECT_COLORS[
+            (data.subjects.length + index) % SUBJECT_COLORS.length
+          ],
+        createdAt: stamp,
+      }),
+    );
+    const candidates: ScheduleEntry[] = [];
+    result.blocks.forEach((block) =>
+      block.days.forEach((day) => {
+        const resolution = block.requestedSubject
+          ? resolutionFor(block.requestedSubject)
+          : undefined;
+        const resolvedSubjectId =
+          block.subjectId ??
+          (resolution === "__general"
+            ? undefined
+            : resolution === "__create"
+              ? createdSubjects.get(
+                  normalizeScheduleLabel(block.requestedSubject!),
+                )?.id
+              : resolution);
+        candidates.push({
+          id: crypto.randomUUID(),
+          title: block.title.slice(0, LIMITS.scheduleTitle),
+          description: block.description.slice(0, LIMITS.scheduleDescription),
+          startTime: block.startTime,
+          endTime: block.endTime,
+          timeDefined: block.timeDefined,
+          category: block.category,
+          subjectId: resolvedSubjectId || undefined,
+          day,
+          date: block.date,
+          createdAt: stamp,
+          updatedAt: stamp,
+        });
+      }),
+    );
+    const known = new Set(data.scheduleEntries.map(scheduleIdentity));
+    const unique = candidates.filter((entry) => {
+      const identity = scheduleIdentity(entry);
+      if (known.has(identity)) return false;
+      known.add(identity);
+      return true;
+    });
+    const duplicates = candidates.length - unique.length;
+    if (!unique.length) {
+      await dialog.alert({
+        title: "Nenhum bloco novo",
+        message: `Nenhum bloco novo foi encontrado. ${duplicates} ${duplicates === 1 ? "duplicata foi ignorada" : "duplicatas foram ignoradas"}.`,
+      });
+      return;
+    }
+    const room = LIMITS.scheduleEntries - data.scheduleEntries.length;
+    if (room <= 0) {
+      await dialog.alert({
+        title: "Limite atingido",
+        message: `O limite de ${LIMITS.scheduleEntries} blocos já foi atingido.`,
+      });
+      return;
+    }
+    const amount = Math.min(unique.length, room);
+    const usedSubjectIds = new Set(
+      unique.map((entry) => entry.subjectId).filter(Boolean),
+    );
+    const subjectsToCreate = [...createdSubjects.values()].filter((subject) =>
+      usedSubjectIds.has(subject.id),
+    );
+    const duplicateNotice = duplicates
+      ? ` ${duplicates} ${duplicates === 1 ? "duplicata será ignorada" : "duplicatas serão ignoradas"}.`
+      : "";
+    if (
+      !(await dialog.confirm({
+        title: "Confirmar importação de planejamento",
+        message: `Adicionar ${amount} ${amount === 1 ? "bloco novo" : "blocos novos"}${subjectsToCreate.length ? ` e criar ${subjectsToCreate.length} ${subjectsToCreate.length === 1 ? "matéria" : "matérias"}` : ""}?${duplicateNotice}`,
+        confirmText: "Importar agora",
+      }))
+    )
+      return;
+    mutate((current) => ({
+      ...current,
+      subjects: [...current.subjects, ...subjectsToCreate],
+      scheduleEntries: [...current.scheduleEntries, ...unique.slice(0, room)],
+    }));
+    const firstDate = unique
+      .map((block) => block.date)
+      .filter((date): date is string => !!date)
+      .sort()[0];
+    if (firstDate) selectWeek(fromKey(firstDate), firstDate);
+    closeTransfer();
+    const omitted = unique.length - amount;
+    if (duplicates || omitted)
+      await dialog.alert({
+        title: "Importação concluída",
+        message: `${amount} ${amount === 1 ? "bloco foi importado" : "blocos foram importados"}.${duplicates ? ` ${duplicates} ${duplicates === 1 ? "duplicata foi descartada" : "duplicatas foram descartadas"}.` : ""}${omitted ? ` ${omitted} excederam o limite de ${LIMITS.scheduleEntries}.` : ""}`,
+      });
+  };
+  const copyExport = async () => {
+    if (!transferText) return;
+    try {
+      await navigator.clipboard.writeText(transferText);
+      await dialog.alert({
+        title: "Copiado!",
+        message: "Cronograma copiado para a área de transferência.",
+      });
+    } catch {
+      await dialog.prompt({
+        title: "Copie o cronograma abaixo:",
+        defaultValue: transferText,
+        confirmText: "Fechar",
+      });
+    }
+  };
+  const downloadExport = () => {
+    if (!transferText) return;
+    const url = URL.createObjectURL(
+      new Blob([transferText], { type: "text/plain;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `omnidesk-cronograma-${todayKey}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const timeLabel = (entry: ScheduleEntry) =>
+    entry.timeDefined === false
+      ? "Horário a definir"
+      : `${entry.startTime} — ${entry.endTime}`;
+  const renderEntry = (
+    entry: ScheduleEntry,
+    dateKey: string,
+    compact = false,
+  ) => (
+    <article
+      className={`schedule-agenda-card ${entry.category} ${entry.date && !entry.assignmentId ? "one-off" : "recurring"} ${entry.timeDefined === false ? "unscheduled" : ""} ${current?.id === entry.id && dateKey === todayKey ? "is-now" : ""}`}
+      key={`${entry.id}-${dateKey}`}
+      onClick={() => openEdit(entry)}
+    >
+      <div className="agenda-time">
+        {entry.timeDefined === false ? <AlertCircle /> : <Clock3 />}
+        <strong>
+          {entry.timeDefined === false ? "A definir" : entry.startTime}
+        </strong>
+        {entry.timeDefined !== false && <small>{entry.endTime}</small>}
+      </div>
+      <div className="agenda-copy">
+        <span>
+          {entry.assignmentId
+            ? "TRABALHO"
+            : entry.date
+              ? "BLOCO ÚNICO"
+              : "RECORRENTE"}
+          {current?.id === entry.id && dateKey === todayKey ? " · AGORA" : ""}
+        </span>
+        <h3>{entry.title}</h3>
+        {!compact && entry.description && <p>{entry.description}</p>}
+        <small>
+          {entry.subjectId
+            ? subjectName(data, entry.subjectId)
+            : CATEGORIES.find((item) => item.id === entry.category)?.label}
+          {entry.date
+            ? ` · ${formatDate(entry.date)}`
+            : ` · toda ${DAYS[entry.day].toLocaleLowerCase("pt-BR")}`}
+        </small>
+      </div>
+      <div className="agenda-actions">
+        <button
+          title="Duplicar"
+          onClick={(event) => {
+            event.stopPropagation();
+            duplicate(entry);
+          }}
+        >
+          <Copy />
+        </button>
+        <button title="Editar">
+          <Edit3 />
+        </button>
+        <button
+          className="danger"
+          title="Excluir"
+          onClick={(event) => {
+            event.stopPropagation();
+            remove(entry);
+          }}
+        >
+          <Trash2 />
+        </button>
+      </div>
+    </article>
+  );
 
-  return <main className="page schedule-page schedule-redesign">
-    {transferMode && <div className="modal-backdrop"><section className="modal schedule-transfer"><header><div><span className="eyebrow">{transferMode === "import" ? "IMPORTAR PLANEJAMENTO" : "COMPARTILHAR PLANEJAMENTO"}</span><h2>{transferMode === "import" ? "Planeje vários blocos de uma vez" : "Seu cronograma pronto para compartilhar"}</h2></div><button className="icon-button" onClick={closeTransfer}><X /></button></header><p>{transferMode === "import" ? "Cole blocos no formato abaixo. Nomes equivalentes de matérias são reconhecidos automaticamente; os demais podem ser associados antes da importação." : "Copie, salve ou compartilhe este conteúdo. Ele pode ser editado e importado novamente no OmniDesk."}</p><textarea className="schedule-transfer-text" readOnly={transferMode === "export"} placeholder={SCHEDULE_IMPORT_EXAMPLE} value={transferText} onChange={(event) => { setTransferText(event.target.value); setTransferPreview(undefined); setSubjectResolutions({}); }} />{transferMode === "import" && <details><summary>Ver modelo aceito e categorias</summary><pre>{SCHEDULE_IMPORT_EXAMPLE}</pre><small>Estudo e Revisão aceitam matéria; sem esse campo, permanecem em Geral. Pausa, Pessoal e Outro não usam matéria.</small></details>}{transferPreview && <div className={`schedule-transfer-result ${transferPreview.errors.length ? "has-errors" : "is-valid"}`}>{transferPreview.errors.length ? <><strong>Revise o texto antes de importar:</strong><ul>{transferPreview.errors.map((error) => <li key={error}>{error}</li>)}</ul></> : <strong>{transferPreview.blocks.reduce((total, block) => total + block.days.length, 0)} blocos reconhecidos · {transferPreview.automaticMatches} associações automáticas.</strong>}{transferPreview.warnings.length > 0 && <div className="schedule-import-warnings"><strong>Avisos que não impedem a importação</strong><ul>{transferPreview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}{transferPreview.subjectIssues.length > 0 && !transferPreview.errors.length && <div className="schedule-subject-resolution"><strong>Confira as matérias não reconhecidas</strong><p>A escolha será aplicada a todos os blocos que usam o mesmo nome.</p>{transferPreview.subjectIssues.map((issue) => <label key={issue.normalizedName}><span><b>{issue.name}</b><small>{issue.occurrences} {issue.occurrences === 1 ? "bloco" : "blocos"}{issue.suggestionId ? ` · sugestão: ${data.subjects.find((subject) => subject.id === issue.suggestionId)?.title}` : ""}</small></span><select value={subjectResolutions[issue.normalizedName] ?? issue.suggestionId ?? ""} onChange={(event) => setSubjectResolutions({ ...subjectResolutions, [issue.normalizedName]: event.target.value })}><option value="">Escolha como tratar</option><option value="__general">Usar Geral</option>{data.subjects.map((subject) => <option value={subject.id} key={subject.id}>Associar a {subject.title}</option>)}<option value="__create">Criar “{issue.name}”</option></select></label>)}</div>}</div>}<footer>{transferMode === "import" ? <><button className="secondary-button" onClick={previewImport}>Analisar planejamento</button><button className="primary-button" disabled={!transferText.trim() || !!transferPreview?.errors.length || !!transferPreview?.subjectIssues.some((issue) => !(subjectResolutions[issue.normalizedName] ?? issue.suggestionId))} onClick={importSchedule}><FileInput /> Importar blocos</button></> : <><button className="secondary-button" disabled={!transferText} onClick={copyExport}><ClipboardCopy /> Copiar</button><button className="primary-button" disabled={!transferText} onClick={downloadExport}><Download /> Baixar .txt</button></>}</footer></section></div>}
-    <section className="schedule-hero"><div><span className="eyebrow">PLANO DA SEMANA</span><h2>Sua rotina, com espaço para respirar.</h2><p>Organize estudos, revisões, entregas e pausas sem transformar o dia numa lista infinita.</p></div><div className="schedule-now"><Sparkles /><span>{current ? "Acontecendo agora" : featured?.assignmentId ? "Próximo trabalho" : "Próximo compromisso"}</span><strong>{featured?.title ?? "Semana livre"}</strong>{featured && <small>{featured.date ? formatDate(featured.date) : DAYS[featured.day]} · {timeLabel(featured).toLocaleLowerCase("pt-BR")}</small>}</div></section>
-    {movedTo && <div className="schedule-moved"><span><CalendarClock /><strong>Bloco movido para {formatDate(movedTo, true)}.</strong></span><button onClick={() => { selectWeek(fromKey(movedTo), movedTo); setMovedTo(undefined); }}>Ir para a semana <ChevronRight /></button><button className="icon-button" onClick={() => setMovedTo(undefined)}><X /></button></div>}
-    {upcomingWorks.length > 0 && <section className="schedule-deadlines"><div><span className="eyebrow">PRÓXIMAS ENTREGAS</span><strong>Trabalhos no seu plano</strong></div>{upcomingWorks.map((entry) => <button onClick={() => { if (entry.date) selectWeek(fromKey(entry.date), entry.date); openEdit(entry); }} key={entry.id}><span><strong>{entry.title}</strong><small>{formatDate(entry.date!)} · {subjectName(data, entry.subjectId)}</small></span>{entry.timeDefined === false && <em><AlertCircle /> Horário não definido</em>}<Edit3 /></button>)}</section>}
-    <div className="schedule-transfer-bar"><span><strong>Importar e compartilhar</strong><small>Planeje vários blocos de uma vez ou envie sua agenda para outra pessoa.</small></span><div><button className="secondary-button" onClick={openImport}><FileInput /> Importar planejamento</button><button className="secondary-button" onClick={openExport}><Download /> Exportar planejamento</button></div></div>
-    <section className="schedule-week-picker"><div className="week-navigation"><button className="secondary-button" onClick={() => selectWeek(addDays(viewedWeek, -7))}><ChevronLeft /></button><div><span className="eyebrow">SEMANA VISUALIZADA</span><strong>{formatRange(weekDates)}</strong></div><button className="secondary-button" onClick={() => selectWeek(addDays(viewedWeek, 7))}><ChevronRight /></button><button className="text-button" onClick={() => selectWeek(new Date(), todayKey)}><RotateCcw /> Hoje</button></div><div className="schedule-view-switch"><button className={view === "day" ? "active" : ""} onClick={() => setView("day")}><CalendarClock /> Dia</button><button className={view === "week" ? "active" : ""} onClick={() => setView("week")}><List /> Semana</button></div><div className="week-strip">{weekDates.map((date, index) => { const key = localDayKey(date); const items = entriesFor(key); return <button className={`${selectedDate === key ? "active" : ""} ${todayKey === key ? "today" : ""}`} onClick={() => { setSelectedDate(key); setView("day"); }} key={key}><span>{DAYS[index].slice(0, 3)}</span><strong>{date.getDate()}</strong><small>{items.length} {items.length === 1 ? "bloco" : "blocos"}</small><i>{items.slice(0, 4).map((entry) => <b className={entry.category} key={entry.id} />)}</i></button>; })}</div></section>
-    <section className="schedule-agenda-panel"><header><div><span className="eyebrow">{view === "day" ? "AGENDA DO DIA" : "VISÃO DA SEMANA"}</span><h2>{view === "day" ? formatDate(selectedDate, true) : formatRange(weekDates)}</h2></div><div><button className="text-button" disabled={!selectedEntries.length} onClick={copyDay}><Copy /> Copiar dia</button><button className="text-button danger" disabled={!selectedEditable.length} onClick={clearDay}>Limpar dia</button><button className="text-button danger" disabled={!entries.some((entry) => !entry.assignmentId && entry.date && entry.date >= weekStartKey && entry.date <= weekEndKey)} onClick={clearWeek}>Limpar blocos únicos</button><button className="primary-button" onClick={() => openNew()}><Plus /> Novo bloco</button></div></header>{view === "day" ? <div className="day-agenda">{selectedEntries.length ? selectedEntries.map((entry) => renderEntry(entry, selectedDate)) : <div className="empty-state"><CalendarClock /><h3>Dia livre</h3><p>Adicione um bloco único ou uma recorrência para começar.</p><button className="primary-button" onClick={() => openNew()}><Plus /> Planejar este dia</button></div>}</div> : <div className="week-list-agenda">{weekDates.map((date, index) => { const key = localDayKey(date); const items = entriesFor(key); return <section key={key}><header><div><span>{DAYS[index]}</span><strong>{date.getDate()}</strong></div><small>{items.length ? `${items.length} ${items.length === 1 ? "bloco" : "blocos"}` : "Dia livre"}</small><button onClick={() => { setSelectedDate(key); setView("day"); }}>Abrir dia <ChevronRight /></button></header>{items.length > 0 && <div>{items.map((entry) => renderEntry(entry, key, true))}</div>}</section>; })}</div>}</section>
-    {draft && <div className="modal-backdrop"><section className="modal schedule-editor"><header><div><span className="eyebrow">{draft.assignmentId ? "TRABALHO NO CRONOGRAMA" : editing ? "EDITAR BLOCO" : "NOVO BLOCO"}</span><h2>{draft.assignmentId ? "Defina quando trabalhar nisso" : editing ? "Ajuste seu plano" : "Reserve este momento"}</h2></div><button className="icon-button" onClick={() => setDraft(undefined)}><X /></button></header>{draft.assignmentId && !draft.startTime && <p className="schedule-time-warning"><AlertCircle /> A data veio do trabalho. Escolha um horário para concluir o planejamento.</p>}{!draft.assignmentId && <div className="schedule-kind"><button className={draft.recurrence === "once" ? "active" : ""} onClick={() => setDraft({ ...draft, recurrence: "once", date: draft.date ?? selectedDate })}><CalendarClock /><span><strong>Bloco único</strong><small>Acontece somente na data escolhida</small></span></button><button className={draft.recurrence === "weekly" ? "active" : ""} onClick={() => setDraft({ ...draft, recurrence: "weekly", date: undefined })}><Copy /><span><strong>Bloco recorrente</strong><small>Repete toda semana nos dias selecionados</small></span></button></div>}<div className="modal-form"><label>Título<input autoFocus maxLength={LIMITS.scheduleTitle} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label><label>Categoria<select value={draft.category} disabled={!!draft.assignmentId} onChange={(event) => { const category = event.target.value as ScheduleCategory; setDraft({ ...draft, category, subjectId: category === "study" || category === "review" ? draft.subjectId : "" }); }}>{draft.assignmentId && <option value="assignment">Trabalho vinculado</option>}{CATEGORIES.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</select></label>{draft.recurrence === "once" && <label>{draft.assignmentId ? "Data da entrega" : "Data"}<input type="date" value={draft.date ?? ""} disabled={!!draft.assignmentId} onChange={(event) => setDraft({ ...draft, date: event.target.value })} /></label>}<label>Início<input type="time" value={draft.startTime} onChange={(event) => setDraft({ ...draft, startTime: event.target.value })} /></label><label>Fim<input type="time" value={draft.endTime} onChange={(event) => setDraft({ ...draft, endTime: event.target.value })} /></label>{(draft.category === "study" || draft.category === "review" || !!draft.assignmentId) && <label>Matéria <small>opcional</small><select value={draft.subjectId} disabled={!!draft.assignmentId} onChange={(event) => setDraft({ ...draft, subjectId: event.target.value })}><option value="">Geral</option>{data.subjects.map((subject) => <option value={subject.id} key={subject.id}>{subject.title}</option>)}</select></label>}<label className="wide">Observações <small>opcional</small><textarea maxLength={LIMITS.scheduleDescription} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label>{draft.recurrence === "weekly" && !draft.assignmentId && <fieldset className="schedule-days wide"><legend>Repetir nos dias</legend>{DAYS.map((day, index) => <button type="button" className={draft.days.includes(index) ? "active" : ""} onClick={() => setDraft({ ...draft, days: draft.days.includes(index) ? draft.days.filter((item) => item !== index) : [...draft.days, index] })} key={day}>{day.slice(0, 3)}</button>)}</fieldset>}</div><footer><button className="secondary-button" onClick={() => setDraft(undefined)}>Cancelar</button><button className="primary-button" disabled={!draft.title.trim() || draft.recurrence === "weekly" && !draft.days.length || draft.recurrence === "once" && !draft.date} onClick={save}><Clock3 /> Salvar no cronograma</button></footer></section></div>}
-  </main>;
+  return (
+    <main className="page schedule-page schedule-redesign">
+      {transferMode && (
+        <div className="modal-backdrop">
+          <section className="modal schedule-transfer">
+            <header>
+              <div>
+                <span className="eyebrow">
+                  {transferMode === "import"
+                    ? "IMPORTAR PLANEJAMENTO"
+                    : "COMPARTILHAR PLANEJAMENTO"}
+                </span>
+                <h2>
+                  {transferMode === "import"
+                    ? "Planeje vários blocos de uma vez"
+                    : "Seu cronograma pronto para compartilhar"}
+                </h2>
+              </div>
+              <button className="icon-button" onClick={closeTransfer}>
+                <X />
+              </button>
+            </header>
+            <p>
+              {transferMode === "import"
+                ? "Cole blocos no formato abaixo. Nomes equivalentes de matérias são reconhecidos automaticamente; os demais podem ser associados antes da importação."
+                : "Copie, salve ou compartilhe este conteúdo. Ele pode ser editado e importado novamente no OmniDesk."}
+            </p>
+            <textarea
+              className="schedule-transfer-text"
+              readOnly={transferMode === "export"}
+              placeholder={SCHEDULE_IMPORT_EXAMPLE}
+              value={transferText}
+              onChange={(event) => {
+                setTransferText(event.target.value);
+                setTransferPreview(undefined);
+                setSubjectResolutions({});
+              }}
+            />
+            {transferMode === "import" && (
+              <details>
+                <summary>Ver modelo aceito e categorias</summary>
+                <pre>{SCHEDULE_IMPORT_EXAMPLE}</pre>
+                <small>
+                  Estudo e Revisão aceitam matéria; sem esse campo, permanecem
+                  em Geral. Pausa, Pessoal e Outro não usam matéria.
+                </small>
+              </details>
+            )}
+            {transferPreview && (
+              <div
+                className={`schedule-transfer-result ${transferPreview.errors.length ? "has-errors" : "is-valid"}`}
+              >
+                {transferPreview.errors.length ? (
+                  <>
+                    <strong>Revise o texto antes de importar:</strong>
+                    <ul>
+                      {transferPreview.errors.map((error) => (
+                        <li key={error}>{error}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <strong>
+                    {transferPreview.blocks.reduce(
+                      (total, block) => total + block.days.length,
+                      0,
+                    )}{" "}
+                    blocos reconhecidos · {transferPreview.automaticMatches}{" "}
+                    associações automáticas.
+                  </strong>
+                )}
+                {transferPreview.warnings.length > 0 && (
+                  <div className="schedule-import-warnings">
+                    <strong>Avisos que não impedem a importação</strong>
+                    <ul>
+                      {transferPreview.warnings.map((warning) => (
+                        <li key={warning}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {transferPreview.subjectIssues.length > 0 &&
+                  !transferPreview.errors.length && (
+                    <div className="schedule-subject-resolution">
+                      <strong>Confira as matérias não reconhecidas</strong>
+                      <p>
+                        A escolha será aplicada a todos os blocos que usam o
+                        mesmo nome.
+                      </p>
+                      {transferPreview.subjectIssues.map((issue) => (
+                        <label key={issue.normalizedName}>
+                          <span>
+                            <b>{issue.name}</b>
+                            <small>
+                              {issue.occurrences}{" "}
+                              {issue.occurrences === 1 ? "bloco" : "blocos"}
+                              {issue.suggestionId
+                                ? ` · sugestão: ${data.subjects.find((subject) => subject.id === issue.suggestionId)?.title}`
+                                : ""}
+                            </small>
+                          </span>
+                          <select
+                            value={
+                              subjectResolutions[issue.normalizedName] ??
+                              issue.suggestionId ??
+                              ""
+                            }
+                            onChange={(event) =>
+                              setSubjectResolutions({
+                                ...subjectResolutions,
+                                [issue.normalizedName]: event.target.value,
+                              })
+                            }
+                          >
+                            <option value="">Escolha como tratar</option>
+                            <option value="__general">Usar Geral</option>
+                            {data.subjects.map((subject) => (
+                              <option value={subject.id} key={subject.id}>
+                                Associar a {subject.title}
+                              </option>
+                            ))}
+                            <option value="__create">
+                              Criar “{issue.name}”
+                            </option>
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+              </div>
+            )}
+            <footer>
+              {transferMode === "import" ? (
+                <>
+                  <button className="secondary-button" onClick={previewImport}>
+                    Analisar planejamento
+                  </button>
+                  <button
+                    className="primary-button"
+                    disabled={
+                      !transferText.trim() ||
+                      !!transferPreview?.errors.length ||
+                      !!transferPreview?.subjectIssues.some(
+                        (issue) =>
+                          !(
+                            subjectResolutions[issue.normalizedName] ??
+                            issue.suggestionId
+                          ),
+                      )
+                    }
+                    onClick={importSchedule}
+                  >
+                    <FileInput /> Importar blocos
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="secondary-button"
+                    disabled={!transferText}
+                    onClick={copyExport}
+                  >
+                    <ClipboardCopy /> Copiar
+                  </button>
+                  <button
+                    className="primary-button"
+                    disabled={!transferText}
+                    onClick={downloadExport}
+                  >
+                    <Download /> Baixar .txt
+                  </button>
+                </>
+              )}
+            </footer>
+          </section>
+        </div>
+      )}
+      <section className="schedule-hero">
+        <div>
+          <span className="eyebrow">PLANO DA SEMANA</span>
+          <h2>Sua rotina, com espaço para respirar.</h2>
+          <p>
+            Organize estudos, revisões, entregas e pausas sem transformar o dia
+            numa lista infinita.
+          </p>
+        </div>
+        <div className="schedule-now">
+          <Sparkles />
+          <span>
+            {current
+              ? "Acontecendo agora"
+              : featured?.assignmentId
+                ? "Próximo trabalho"
+                : "Próximo compromisso"}
+          </span>
+          <strong>{featured?.title ?? "Semana livre"}</strong>
+          {featured && (
+            <small>
+              {featured.date ? formatDate(featured.date) : DAYS[featured.day]} ·{" "}
+              {timeLabel(featured).toLocaleLowerCase("pt-BR")}
+            </small>
+          )}
+        </div>
+      </section>
+      {movedTo && (
+        <div className="schedule-moved">
+          <span>
+            <CalendarClock />
+            <strong>Bloco movido para {formatDate(movedTo, true)}.</strong>
+          </span>
+          <button
+            onClick={() => {
+              selectWeek(fromKey(movedTo), movedTo);
+              setMovedTo(undefined);
+            }}
+          >
+            Ir para a semana <ChevronRight />
+          </button>
+          <button className="icon-button" onClick={() => setMovedTo(undefined)}>
+            <X />
+          </button>
+        </div>
+      )}
+      {upcomingWorks.length > 0 && (
+        <section className="schedule-deadlines">
+          <div>
+            <span className="eyebrow">PRÓXIMAS ENTREGAS</span>
+            <strong>Trabalhos no seu plano</strong>
+          </div>
+          {upcomingWorks.map((entry) => (
+            <button
+              onClick={() => {
+                if (entry.date) selectWeek(fromKey(entry.date), entry.date);
+                openEdit(entry);
+              }}
+              key={entry.id}
+            >
+              <span>
+                <strong>{entry.title}</strong>
+                <small>
+                  {formatDate(entry.date!)} ·{" "}
+                  {subjectName(data, entry.subjectId)}
+                </small>
+              </span>
+              {entry.timeDefined === false && (
+                <em>
+                  <AlertCircle /> Horário não definido
+                </em>
+              )}
+              <Edit3 />
+            </button>
+          ))}
+        </section>
+      )}
+      <div className="schedule-transfer-bar">
+        <span>
+          <strong>Importar e compartilhar</strong>
+          <small>
+            Planeje vários blocos de uma vez ou envie sua agenda para outra
+            pessoa.
+          </small>
+        </span>
+        <div>
+          <button className="secondary-button" onClick={openImport}>
+            <FileInput /> Importar planejamento
+          </button>
+          <button className="secondary-button" onClick={openExport}>
+            <Download /> Exportar planejamento
+          </button>
+        </div>
+      </div>
+      <section className="schedule-week-picker">
+        <div className="week-navigation">
+          <button
+            className="secondary-button"
+            onClick={() => selectWeek(addDays(viewedWeek, -7))}
+          >
+            <ChevronLeft />
+          </button>
+          <div>
+            <span className="eyebrow">SEMANA VISUALIZADA</span>
+            <strong>{formatRange(weekDates)}</strong>
+          </div>
+          <button
+            className="secondary-button"
+            onClick={() => selectWeek(addDays(viewedWeek, 7))}
+          >
+            <ChevronRight />
+          </button>
+          <button
+            className="text-button"
+            onClick={() => selectWeek(new Date(), todayKey)}
+          >
+            <RotateCcw /> Hoje
+          </button>
+        </div>
+        <div className="schedule-view-switch">
+          <button
+            className={view === "day" ? "active" : ""}
+            onClick={() => setView("day")}
+          >
+            <CalendarClock /> Dia
+          </button>
+          <button
+            className={view === "week" ? "active" : ""}
+            onClick={() => setView("week")}
+          >
+            <List /> Semana
+          </button>
+        </div>
+        <div className="week-strip">
+          {weekDates.map((date, index) => {
+            const key = localDayKey(date);
+            const items = entriesFor(key);
+            return (
+              <button
+                className={`${selectedDate === key ? "active" : ""} ${todayKey === key ? "today" : ""}`}
+                onClick={() => {
+                  setSelectedDate(key);
+                  setView("day");
+                }}
+                key={key}
+              >
+                <span>{DAYS[index].slice(0, 3)}</span>
+                <strong>{date.getDate()}</strong>
+                <small>
+                  {items.length} {items.length === 1 ? "bloco" : "blocos"}
+                </small>
+                <i>
+                  {items.slice(0, 4).map((entry) => (
+                    <b className={entry.category} key={entry.id} />
+                  ))}
+                </i>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+      <section className="schedule-agenda-panel">
+        <header>
+          <div>
+            <span className="eyebrow">
+              {view === "day" ? "AGENDA DO DIA" : "VISÃO DA SEMANA"}
+            </span>
+            <h2>
+              {view === "day"
+                ? formatDate(selectedDate, true)
+                : formatRange(weekDates)}
+            </h2>
+          </div>
+          <div>
+            <button
+              className="text-button"
+              disabled={!selectedEntries.length}
+              onClick={copyDay}
+            >
+              <Copy /> Copiar dia
+            </button>
+            <button
+              className="text-button danger"
+              disabled={!selectedEditable.length}
+              onClick={clearDay}
+            >
+              Limpar dia
+            </button>
+            <button
+              className="text-button danger"
+              disabled={
+                !entries.some(
+                  (entry) =>
+                    !entry.assignmentId &&
+                    entry.date &&
+                    entry.date >= weekStartKey &&
+                    entry.date <= weekEndKey,
+                )
+              }
+              onClick={clearWeek}
+            >
+              Limpar blocos únicos
+            </button>
+            <button className="primary-button" onClick={() => openNew()}>
+              <Plus /> Novo bloco
+            </button>
+          </div>
+        </header>
+        {view === "day" ? (
+          <div className="day-agenda">
+            {selectedEntries.length ? (
+              selectedEntries.map((entry) => renderEntry(entry, selectedDate))
+            ) : (
+              <div className="empty-state">
+                <CalendarClock />
+                <h3>Dia livre</h3>
+                <p>Adicione um bloco único ou uma recorrência para começar.</p>
+                <button className="primary-button" onClick={() => openNew()}>
+                  <Plus /> Planejar este dia
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="week-list-agenda">
+            {weekDates.map((date, index) => {
+              const key = localDayKey(date);
+              const items = entriesFor(key);
+              return (
+                <section key={key}>
+                  <header>
+                    <div>
+                      <span>{DAYS[index]}</span>
+                      <strong>{date.getDate()}</strong>
+                    </div>
+                    <small>
+                      {items.length
+                        ? `${items.length} ${items.length === 1 ? "bloco" : "blocos"}`
+                        : "Dia livre"}
+                    </small>
+                    <button
+                      onClick={() => {
+                        setSelectedDate(key);
+                        setView("day");
+                      }}
+                    >
+                      Abrir dia <ChevronRight />
+                    </button>
+                  </header>
+                  {items.length > 0 && (
+                    <div>
+                      {items.map((entry) => renderEntry(entry, key, true))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        )}
+      </section>
+      {draft && (
+        <div className="modal-backdrop">
+          <section className="modal schedule-editor">
+            <header>
+              <div>
+                <span className="eyebrow">
+                  {draft.assignmentId
+                    ? "TRABALHO NO CRONOGRAMA"
+                    : editing
+                      ? "EDITAR BLOCO"
+                      : "NOVO BLOCO"}
+                </span>
+                <h2>
+                  {draft.assignmentId
+                    ? "Defina quando trabalhar nisso"
+                    : editing
+                      ? "Ajuste seu plano"
+                      : "Reserve este momento"}
+                </h2>
+              </div>
+              <button
+                className="icon-button"
+                onClick={() => setDraft(undefined)}
+              >
+                <X />
+              </button>
+            </header>
+            {draft.assignmentId && !draft.startTime && (
+              <p className="schedule-time-warning">
+                <AlertCircle /> A data veio do trabalho. Escolha um horário para
+                concluir o planejamento.
+              </p>
+            )}
+            {!draft.assignmentId && (
+              <div className="schedule-kind">
+                <button
+                  className={draft.recurrence === "once" ? "active" : ""}
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      recurrence: "once",
+                      date: draft.date ?? selectedDate,
+                    })
+                  }
+                >
+                  <CalendarClock />
+                  <span>
+                    <strong>Bloco único</strong>
+                    <small>Acontece somente na data escolhida</small>
+                  </span>
+                </button>
+                <button
+                  className={draft.recurrence === "weekly" ? "active" : ""}
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      recurrence: "weekly",
+                      date: undefined,
+                    })
+                  }
+                >
+                  <Copy />
+                  <span>
+                    <strong>Bloco recorrente</strong>
+                    <small>Repete toda semana nos dias selecionados</small>
+                  </span>
+                </button>
+              </div>
+            )}
+            <div className="modal-form">
+              <label>
+                Título
+                <input
+                  autoFocus
+                  maxLength={LIMITS.scheduleTitle}
+                  value={draft.title}
+                  onChange={(event) =>
+                    setDraft({ ...draft, title: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Categoria
+                <select
+                  value={draft.category}
+                  disabled={!!draft.assignmentId}
+                  onChange={(event) => {
+                    const category = event.target.value as ScheduleCategory;
+                    setDraft({
+                      ...draft,
+                      category,
+                      subjectId:
+                        category === "study" || category === "review"
+                          ? draft.subjectId
+                          : "",
+                    });
+                  }}
+                >
+                  {draft.assignmentId && (
+                    <option value="assignment">Trabalho vinculado</option>
+                  )}
+                  {CATEGORIES.map((item) => (
+                    <option value={item.id} key={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {draft.recurrence === "once" && (
+                <label>
+                  {draft.assignmentId ? "Data da entrega" : "Data"}
+                  <input
+                    type="date"
+                    value={draft.date ?? ""}
+                    disabled={!!draft.assignmentId}
+                    onChange={(event) =>
+                      setDraft({ ...draft, date: event.target.value })
+                    }
+                  />
+                </label>
+              )}
+              <label>
+                Início
+                <input
+                  type="time"
+                  value={draft.startTime}
+                  onChange={(event) =>
+                    setDraft({ ...draft, startTime: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Fim
+                <input
+                  type="time"
+                  value={draft.endTime}
+                  onChange={(event) =>
+                    setDraft({ ...draft, endTime: event.target.value })
+                  }
+                />
+              </label>
+              {(draft.category === "study" ||
+                draft.category === "review" ||
+                !!draft.assignmentId) && (
+                <label>
+                  Matéria <small>opcional</small>
+                  <select
+                    value={draft.subjectId}
+                    disabled={!!draft.assignmentId}
+                    onChange={(event) =>
+                      setDraft({ ...draft, subjectId: event.target.value })
+                    }
+                  >
+                    <option value="">Geral</option>
+                    {data.subjects.map((subject) => (
+                      <option value={subject.id} key={subject.id}>
+                        {subject.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label className="wide">
+                Observações <small>opcional</small>
+                <textarea
+                  maxLength={LIMITS.scheduleDescription}
+                  value={draft.description}
+                  onChange={(event) =>
+                    setDraft({ ...draft, description: event.target.value })
+                  }
+                />
+              </label>
+              {draft.recurrence === "weekly" && !draft.assignmentId && (
+                <fieldset className="schedule-days wide">
+                  <legend>Repetir nos dias</legend>
+                  {DAYS.map((day, index) => (
+                    <button
+                      type="button"
+                      className={draft.days.includes(index) ? "active" : ""}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          days: draft.days.includes(index)
+                            ? draft.days.filter((item) => item !== index)
+                            : [...draft.days, index],
+                        })
+                      }
+                      key={day}
+                    >
+                      {day.slice(0, 3)}
+                    </button>
+                  ))}
+                </fieldset>
+              )}
+            </div>
+            <footer>
+              <button
+                className="secondary-button"
+                onClick={() => setDraft(undefined)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="primary-button"
+                disabled={
+                  !draft.title.trim() ||
+                  (draft.recurrence === "weekly" && !draft.days.length) ||
+                  (draft.recurrence === "once" && !draft.date)
+                }
+                onClick={save}
+              >
+                <Clock3 /> Salvar no cronograma
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
+    </main>
+  );
 }
 export default Cronograma;

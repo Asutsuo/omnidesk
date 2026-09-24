@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import type { Assignment, AppData } from "../data";
 import { assignmentScheduleEntry, LIMITS, subjectName } from "../data";
+import { useDialog } from "../components/DialogModal";
 
 type Props = {
   data: AppData;
@@ -15,16 +16,18 @@ type Props = {
 };
 
 export default function Prazos({ data, mutate }: Props) {
+  const dialog = useDialog();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Assignment>();
   const [filter, setFilter] = useState<"all" | "pending" | "completed">("all");
 
   const assignments = useMemo(() => {
-    const filtered = filter === "pending"
-      ? data.assignments.filter((item) => !item.completed)
-      : filter === "completed"
-        ? data.assignments.filter((item) => item.completed)
-        : data.assignments;
+    const filtered =
+      filter === "pending"
+        ? data.assignments.filter((item) => !item.completed)
+        : filter === "completed"
+          ? data.assignments.filter((item) => item.completed)
+          : data.assignments;
     return filtered.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   }, [data.assignments, filter]);
 
@@ -63,16 +66,47 @@ export default function Prazos({ data, mutate }: Props) {
       description: String(form.get("description") || "").trim(),
       subjectId,
       dueDate: String(form.get("dueDate") || ""),
-      priority: String(form.get("priority") || "Média") as Assignment["priority"],
+      priority: String(
+        form.get("priority") || "Média",
+      ) as Assignment["priority"],
     };
 
     if (!values.title || !values.dueDate) return;
 
     mutate((current) => {
-      const assignment: Assignment = editing ? { ...editing, ...values } : { id: crypto.randomUUID(), completed: false, ...values };
-      const generated = assignmentScheduleEntry(assignment); const existing = current.scheduleEntries.find((item) => item.assignmentId === assignment.id);
-      const scheduleEntries = existing ? current.scheduleEntries.map((item) => item.assignmentId === assignment.id ? { ...item, title: assignment.title, description: assignment.description, subjectId: assignment.subjectId, date: assignment.dueDate, day: generated.day, updatedAt: new Date().toISOString() } : item) : current.scheduleEntries.length < LIMITS.scheduleEntries ? [...current.scheduleEntries, generated] : current.scheduleEntries;
-      return { ...current, assignments: editing ? current.assignments.map((item) => item.id === editing.id ? assignment : item) : [...current.assignments, assignment], scheduleEntries };
+      const assignment: Assignment = editing
+        ? { ...editing, ...values }
+        : { id: crypto.randomUUID(), completed: false, ...values };
+      const generated = assignmentScheduleEntry(assignment);
+      const existing = current.scheduleEntries.find(
+        (item) => item.assignmentId === assignment.id,
+      );
+      const scheduleEntries = existing
+        ? current.scheduleEntries.map((item) =>
+            item.assignmentId === assignment.id
+              ? {
+                  ...item,
+                  title: assignment.title,
+                  description: assignment.description,
+                  subjectId: assignment.subjectId,
+                  date: assignment.dueDate,
+                  day: generated.day,
+                  updatedAt: new Date().toISOString(),
+                }
+              : item,
+          )
+        : current.scheduleEntries.length < LIMITS.scheduleEntries
+          ? [...current.scheduleEntries, generated]
+          : current.scheduleEntries;
+      return {
+        ...current,
+        assignments: editing
+          ? current.assignments.map((item) =>
+              item.id === editing.id ? assignment : item,
+            )
+          : [...current.assignments, assignment],
+        scheduleEntries,
+      };
     });
     closeForm();
   };
@@ -92,12 +126,23 @@ export default function Prazos({ data, mutate }: Props) {
     }));
   };
 
-  const remove = (id: string) => {
-    if (!window.confirm("Excluir este trabalho?")) return;
+  const remove = async (id: string) => {
+    if (
+      !(await dialog.confirm({
+        title: "Excluir este trabalho?",
+        message:
+          "Os blocos vinculados a este trabalho no cronograma também serão removidos.",
+        danger: true,
+        confirmText: "Excluir trabalho",
+      }))
+    )
+      return;
     mutate((current) => ({
       ...current,
       assignments: current.assignments.filter((item) => item.id !== id),
-      scheduleEntries: current.scheduleEntries.filter((item) => item.assignmentId !== id),
+      scheduleEntries: current.scheduleEntries.filter(
+        (item) => item.assignmentId !== id,
+      ),
     }));
     if (editing?.id === id) closeForm();
   };
@@ -121,7 +166,11 @@ export default function Prazos({ data, mutate }: Props) {
       </section>
 
       {showForm && (
-        <form key={editing?.id ?? "new"} className="inline-form panel global-deadline-form" onSubmit={submit}>
+        <form
+          key={editing?.id ?? "new"}
+          className="inline-form panel global-deadline-form"
+          onSubmit={submit}
+        >
           <label>
             Título
             <input
@@ -155,7 +204,12 @@ export default function Prazos({ data, mutate }: Props) {
           </label>
           <label>
             Entrega
-            <input name="dueDate" type="date" defaultValue={editing?.dueDate} required />
+            <input
+              name="dueDate"
+              type="date"
+              defaultValue={editing?.dueDate}
+              required
+            />
           </label>
           <label>
             Prioridade
@@ -185,7 +239,10 @@ export default function Prazos({ data, mutate }: Props) {
             <h2>{assignments.length} trabalhos</h2>
           </div>
           <div className="simple-filters" aria-label="Filtrar trabalhos">
-            <button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>
+            <button
+              className={filter === "all" ? "active" : ""}
+              onClick={() => setFilter("all")}
+            >
               Todos
             </button>
             <button
@@ -207,31 +264,44 @@ export default function Prazos({ data, mutate }: Props) {
           <div className="empty-state">
             <BriefcaseBusiness size={30} />
             <h3>Nenhum trabalho por aqui</h3>
-            <p>Crie um projeto geral ou vincule-o a uma matéria quando fizer sentido.</p>
+            <p>
+              Crie um projeto geral ou vincule-o a uma matéria quando fizer
+              sentido.
+            </p>
           </div>
         ) : (
           <div className="task-list full">
             {assignments.map((item) => (
-              <article key={item.id} className={`assignment-row ${item.completed ? "completed" : ""}`}>
+              <article
+                key={item.id}
+                className={`assignment-row ${item.completed ? "completed" : ""}`}
+              >
                 <button
                   className="check-button"
                   type="button"
                   onClick={() => toggleCompleted(item.id)}
-                  aria-label={item.completed ? "Reabrir trabalho" : "Concluir trabalho"}
+                  aria-label={
+                    item.completed ? "Reabrir trabalho" : "Concluir trabalho"
+                  }
                 >
                   {item.completed && <CheckCircle2 size={17} />}
                 </button>
                 <div>
                   <strong>{item.title}</strong>
                   <small>
-                    {subjectName(data, item.subjectId)} · {item.description || "Sem descrição"}
+                    {subjectName(data, item.subjectId)} ·{" "}
+                    {item.description || "Sem descrição"}
                   </small>
                 </div>
-                <span className={`priority priority-${item.priority.toLowerCase()}`}>
+                <span
+                  className={`priority priority-${item.priority.toLowerCase()}`}
+                >
                   {item.priority}
                 </span>
                 <time dateTime={item.dueDate}>
-                  {new Date(`${item.dueDate}T12:00:00`).toLocaleDateString("pt-BR")}
+                  {new Date(`${item.dueDate}T12:00:00`).toLocaleDateString(
+                    "pt-BR",
+                  )}
                 </time>
                 <button
                   className="icon-button"

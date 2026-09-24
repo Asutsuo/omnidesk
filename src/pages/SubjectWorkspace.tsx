@@ -1,48 +1,922 @@
-import { ArrowLeft, Bold, BookOpen, BookmarkPlus, BriefcaseBusiness, CheckCircle2, CheckSquare2, ChevronRight, ExternalLink, FileText, List, ListOrdered, NotebookPen, Pencil, Plus, Sigma, Strikethrough, Timer as TimerIcon, Trash2 } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  ArrowLeft,
+  BookOpen,
+  BookmarkPlus,
+  BriefcaseBusiness,
+  CheckCircle2,
+  CheckSquare2,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  NotebookPen,
+  Pencil,
+  Plus,
+  Sigma,
+  Timer as TimerIcon,
+  Trash2,
+} from "lucide-react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import TimerPanel from "../components/TimerPanel";
-import NotebookEditor, { type NotebookEditorHandle } from "../components/NotebookEditor";
-import { assignmentScheduleEntry, LIMITS, formatTimer, type AppData, type Assignment, type Note, type TimerState } from "../data";
+import NotebookEditor, {
+  type NotebookEditorHandle,
+} from "../components/NotebookEditor";
+import { useDialog } from "../components/DialogModal";
+import {
+  assignmentScheduleEntry,
+  LIMITS,
+  formatTimer,
+  type AppData,
+  type Assignment,
+  type Note,
+  type TimerState,
+} from "../data";
 import { extractUrls, resourceHost } from "../resourceUtils";
 import Biblioteca from "./Biblioteca";
 import Checklists from "./Checklists";
 import Flashcards from "./Flashcards";
 import Questoes from "./Questoes";
 
-type Tab = "overview" | "assignments" | "checklists" | "timer" | "notebooks" | "library" | "flashcards" | "questions";
-type Props = { data: AppData; subjectId: string; onBack: () => void; mutate: (updater: (data: AppData) => AppData) => void; onTimerStart: (timer: TimerState) => void; onTimerUpdate: (timer: TimerState) => void; onTimerDelete: (id: string) => void; onTimerComplete: (timer: TimerState, seconds: number) => void };
+type Tab =
+  | "overview"
+  | "assignments"
+  | "checklists"
+  | "timer"
+  | "notebooks"
+  | "library"
+  | "flashcards"
+  | "questions";
+type Props = {
+  data: AppData;
+  subjectId: string;
+  onBack: () => void;
+  mutate: (updater: (data: AppData) => AppData) => void;
+  onTimerStart: (timer: TimerState) => void;
+  onTimerUpdate: (timer: TimerState) => void;
+  onTimerDelete: (id: string) => void;
+  onTimerComplete: (timer: TimerState, seconds: number) => void;
+};
 const FormulaComposer = lazy(() => import("../components/FormulaComposer"));
 
-function NoteEditor({ note, onSave, onDelete, onSaveLink }: { note: Note; onSave: (note: Note) => void; onDelete: () => void; onSaveLink: (url: string) => void }) {
-  const [title, setTitle] = useState(note.title); const [content, setContent] = useState(note.content); const [showFormula, setShowFormula] = useState(false); const editor = useRef<NotebookEditorHandle>(null); const saved = title === note.title && content === note.content;
-  useEffect(() => { if (saved) return; const timeout = window.setTimeout(() => onSave({ ...note, title: title.trim() || "Sem título", content, updatedAt: new Date().toISOString() }), 700); return () => clearTimeout(timeout); }, [title, content, note, onSave, saved]);
+function NoteEditor({
+  note,
+  onSave,
+  onDelete,
+  onSaveLink,
+}: {
+  note: Note;
+  onSave: (note: Note) => void;
+  onDelete: () => void;
+  onSaveLink: (url: string) => void;
+}) {
+  const [title, setTitle] = useState(note.title);
+  const [content, setContent] = useState(note.content);
+  const [showFormula, setShowFormula] = useState(false);
+  const editor = useRef<NotebookEditorHandle>(null);
+  const saved = title === note.title && content === note.content;
+  useEffect(() => {
+    if (saved) return;
+    const timeout = window.setTimeout(
+      () =>
+        onSave({
+          ...note,
+          title: title.trim() || "Sem título",
+          content,
+          updatedAt: new Date().toISOString(),
+        }),
+      700,
+    );
+    return () => clearTimeout(timeout);
+  }, [title, content, note, onSave, saved]);
   const links = extractUrls(content);
-  const insertFormula = (latex: string, block: boolean) => { editor.current?.insertFormula(latex, block); setShowFormula(false); };
-  return <div className="note-editor enhanced"><div className="note-editor-head"><input value={title} maxLength={120} onChange={(event) => setTitle(event.target.value)} aria-label="Título da anotação" /><span>{saved ? "Salvo" : "Salvando..."}</span><button className="icon-button danger" onClick={onDelete} aria-label="Excluir anotação"><Trash2 size={17} /></button></div><div className="notebook-format-toolbar"><button title="Destacar texto" onMouseDown={(event) => event.preventDefault()} onClick={() => editor.current?.format("bold")}><Bold /></button><button title="Riscar texto" onMouseDown={(event) => event.preventDefault()} onClick={() => editor.current?.format("strikeThrough")}><Strikethrough /></button><button title="Lista com marcadores" onMouseDown={(event) => event.preventDefault()} onClick={() => editor.current?.format("insertUnorderedList")}><List /></button><button title="Lista numerada" onMouseDown={(event) => event.preventDefault()} onClick={() => editor.current?.format("insertOrderedList")}><ListOrdered /></button><span /><button className="formula-button" onMouseDown={() => editor.current?.rememberSelection()} onClick={() => setShowFormula(true)}><Sigma /> Fórmula</button></div><NotebookEditor ref={editor} content={content} onChange={setContent} />{links.length > 0 && <div className="note-links"><strong>Links encontrados na anotação</strong><div>{links.map((link) => <span className="note-link" key={link}><a href={link} target="_blank" rel="noopener noreferrer">{resourceHost(link)}<ExternalLink size={12} /></a><button onClick={() => onSaveLink(link)} title="Salvar na Biblioteca" aria-label={`Salvar ${resourceHost(link)} na Biblioteca`}><BookmarkPlus size={12} /></button></span>)}</div></div>}<small>{content.length.toLocaleString("pt-BR")} de {LIMITS.noteContent.toLocaleString("pt-BR")} caracteres</small>{showFormula && <Suspense fallback={<div className="modal-backdrop"><section className="modal formula-composer-loading">Carregando editor matemático…</section></div>}><FormulaComposer onInsert={insertFormula} onClose={() => setShowFormula(false)} /></Suspense>}</div>;
+  const insertFormula = (latex: string, block: boolean) => {
+    editor.current?.insertFormula(latex, block);
+    setShowFormula(false);
+  };
+  return (
+    <div className="note-editor enhanced">
+      <div className="note-editor-head">
+        <input
+          value={title}
+          maxLength={120}
+          onChange={(event) => setTitle(event.target.value)}
+          aria-label="Título da anotação"
+        />
+        <span>{saved ? "Salvo" : "Salvando..."}</span>
+        <button
+          className="icon-button danger"
+          onClick={onDelete}
+          aria-label="Excluir anotação"
+        >
+          <Trash2 size={17} />
+        </button>
+      </div>
+      <div className="notebook-format-toolbar">
+        <span />
+        <button
+          type="button"
+          className="formula-button"
+          onMouseDown={() => editor.current?.rememberSelection()}
+          onClick={() => setShowFormula(true)}
+        >
+          <Sigma size={15} /> Fórmula
+        </button>
+      </div>
+      <NotebookEditor ref={editor} content={content} onChange={setContent} />
+      {links.length > 0 && (
+        <div className="note-links">
+          <strong>Links encontrados na anotação</strong>
+          <div>
+            {links.map((link) => (
+              <span className="note-link" key={link}>
+                <a href={link} target="_blank" rel="noopener noreferrer">
+                  {resourceHost(link)}
+                  <ExternalLink size={12} />
+                </a>
+                <button
+                  onClick={() => onSaveLink(link)}
+                  title="Salvar na Biblioteca"
+                  aria-label={`Salvar ${resourceHost(link)} na Biblioteca`}
+                >
+                  <BookmarkPlus size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <small>
+        {content.length.toLocaleString("pt-BR")} de{" "}
+        {LIMITS.noteContent.toLocaleString("pt-BR")} caracteres
+      </small>
+      {showFormula && (
+        <Suspense
+          fallback={
+            <div className="modal-backdrop">
+              <section className="modal formula-composer-loading">
+                Carregando editor matemático…
+              </section>
+            </div>
+          }
+        >
+          <FormulaComposer
+            onInsert={insertFormula}
+            onClose={() => setShowFormula(false)}
+          />
+        </Suspense>
+      )}
+    </div>
+  );
 }
 
-function SubjectWorkspace({ data, subjectId, onBack, mutate, onTimerStart, onTimerUpdate, onTimerDelete, onTimerComplete }: Props) {
-  const [tab, setTab] = useState<Tab>("overview"); const [showForm, setShowForm] = useState(false); const [openNotebook, setOpenNotebook] = useState<string>(); const [openNote, setOpenNote] = useState<string>(); const [questionTrail, setQuestionTrail] = useState<string[]>(["Banco de questões"]);
-  const subject = data.subjects.find((item) => item.id === subjectId); if (!subject) return null;
-  const assignments = data.assignments.filter((item) => item.subjectId === subjectId); const checklists = data.checklists.filter((item) => item.subjectId === subjectId);
-  const cards = data.flashcards.filter((item) => item.subjectId === subjectId); const notebooks = data.notebooks.filter((item) => item.subjectId === subjectId); const notes = data.notes.filter((item) => item.subjectId === subjectId); const timer = data.timers.find((item) => item.subjectId === subjectId);
-  const submitAssignment = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (assignments.length >= LIMITS.assignmentsPerSubject || data.assignments.length >= LIMITS.assignments) return; const form = new FormData(event.currentTarget); mutate((current) => { const assignment: Assignment = { id: crypto.randomUUID(), subjectId, title: String(form.get("title")).trim(), description: String(form.get("description")).trim(), dueDate: String(form.get("dueDate")), priority: String(form.get("priority")) as Assignment["priority"], completed: false }; return { ...current, assignments: [assignment, ...current.assignments], scheduleEntries: current.scheduleEntries.length < LIMITS.scheduleEntries ? [...current.scheduleEntries, assignmentScheduleEntry(assignment)] : current.scheduleEntries }; }); setShowForm(false); };
-  const createNotebook = () => { const title = window.prompt("Nome do novo caderno:")?.trim(); if (!title || notebooks.length >= LIMITS.notebooksPerSubject || data.notebooks.length >= LIMITS.notebooks) return; const id = crypto.randomUUID(); const createdAt = new Date().toISOString(); mutate((current) => ({ ...current, notebooks: [...current.notebooks, { id, subjectId, title: title.slice(0, 120), createdAt, updatedAt: createdAt }] })); setOpenNotebook(id); setOpenNote(undefined); };
-  const renameNotebook = (id: string) => { const notebook = notebooks.find((item) => item.id === id); if (!notebook) return; const title = window.prompt("Novo nome do caderno:", notebook.title)?.trim(); if (title) mutate((current) => ({ ...current, notebooks: current.notebooks.map((item) => item.id === id ? { ...item, title: title.slice(0, 120), updatedAt: new Date().toISOString() } : item) })); };
-  const deleteNotebook = (id: string) => { const notebook = notebooks.find((item) => item.id === id); if (!notebook || !window.confirm(`Excluir “${notebook.title}” e todas as suas anotações?`)) return; mutate((current) => ({ ...current, notebooks: current.notebooks.filter((item) => item.id !== id), notes: current.notes.filter((item) => item.notebookId !== id) })); if (openNotebook === id) { setOpenNotebook(undefined); setOpenNote(undefined); } };
-  const createNote = (notebookId: string) => { const id = crypto.randomUUID(); const createdAt = new Date().toISOString(); mutate((current) => ({ ...current, notebooks: current.notebooks.map((item) => item.id === notebookId ? { ...item, updatedAt: createdAt } : item), notes: [...current.notes, { id, notebookId, subjectId, title: "Nova anotação", content: "", createdAt, updatedAt: createdAt }] })); setOpenNote(id); };
-  const deleteNote = (id: string) => { const note = notes.find((item) => item.id === id); if (!note || !window.confirm(`Excluir a anotação “${note.title}”?`)) return; mutate((current) => ({ ...current, notes: current.notes.filter((item) => item.id !== id) })); const remaining = notes.find((item) => item.notebookId === note.notebookId && item.id !== id); setOpenNote(remaining?.id); };
-  const nav = [{ id: "overview", label: "Visão geral" }, { id: "assignments", label: "Trabalhos" }, { id: "checklists", label: "Checklists" }, { id: "timer", label: "Timer" }, { id: "notebooks", label: "Cadernos" }, { id: "library", label: "Materiais" }, { id: "flashcards", label: "Flashcards" }, { id: "questions", label: "Questões" }] as const;
-  const tabLabel = nav.find((item) => item.id === tab)?.label ?? "Visão geral"; const notebook = notebooks.find((item) => item.id === openNotebook); const notebookNote = notes.find((item) => item.id === openNote); const detailTrail = tab === "questions" ? questionTrail : tab === "notebooks" ? [tabLabel, ...(notebook ? [notebook.title] : []), ...(notebookNote ? [notebookNote.title] : [])] : [tabLabel];
-  const bannerSeconds = timer ? (timer.type === "pomodoro" ? timer.remainingSeconds : timer.elapsedSeconds) : 0;
-  return <main className="subject-workspace" style={{ "--subject-color": subject.color } as React.CSSProperties}><header className="subject-header"><button className="back-button" onClick={onBack} aria-label="Voltar para matérias"><ArrowLeft /></button><span className="subject-dot" /><div><span className="eyebrow">ESPAÇO DA MATÉRIA</span><h1>{subject.title}</h1></div></header>{timer && tab !== "timer" && <button className="subject-timer-banner" onClick={() => setTab("timer")}><TimerIcon size={17} /><span><strong>{timer.type === "pomodoro" ? `${timer.mode === "focus" ? "Foco" : "Intervalo"} em ${subject.title}` : `Cronômetro de ${subject.title}`}</strong><small>{formatTimer(bannerSeconds, timer.type === "stopwatch")} · {timer.status === "running" ? "em andamento" : "pausado"}</small></span><ChevronRight /></button>}<nav className="subject-tabs">{nav.map((item) => <button className={tab === item.id ? "active" : ""} onClick={() => { setTab(item.id); setShowForm(false); }} key={item.id}>{item.label}</button>)}</nav>
-  {tab === "overview" && <section className="subject-overview"><div className="subject-welcome"><span className="eyebrow">SUA ROTINA</span><h2>Tudo sobre {subject.title},<br />em um só lugar.</h2><p>Continue de onde parou ou organize o próximo passo.</p>{timer ? <button className="primary-button" onClick={() => setTab("timer")}><TimerIcon size={18} /> Continuar sessão</button> : <button className="primary-button" onClick={() => setTab("timer")}><TimerIcon size={18} /> Iniciar foco</button>}</div><div className="subject-overview-grid"><button onClick={() => setTab("assignments")}><BriefcaseBusiness /><strong>{assignments.filter((item) => !item.completed).length}</strong><span>trabalhos pendentes</span></button><button onClick={() => setTab("checklists")}><CheckSquare2 /><strong>{checklists.length}</strong><span>checklists</span></button><button onClick={() => setTab("notebooks")}><NotebookPen /><strong>{notebooks.length}</strong><span>cadernos</span></button><button onClick={() => setTab("flashcards")}><BookOpen /><strong>{cards.length}</strong><span>flashcards</span></button></div></section>}
-  {tab === "assignments" && <section className="subject-section"><div className="section-heading"><div><span className="eyebrow">PROJETOS E ENTREGAS</span><h2>Seus trabalhos</h2></div><button className="primary-button" onClick={() => setShowForm(!showForm)}><Plus size={18} /> Novo trabalho</button></div>{showForm && <form className="subject-inline-form panel" onSubmit={submitAssignment}><label>Título<input name="title" maxLength={LIMITS.title} required autoFocus /></label><label>Descrição<input name="description" maxLength={10_000} /></label><label>Prazo<input name="dueDate" type="date" required /></label><label>Prioridade<select name="priority"><option>Média</option><option>Alta</option><option>Baixa</option></select></label><button className="primary-button">Adicionar</button></form>}<div className="panel subject-items">{assignments.map((item) => <div className={`assignment-row ${item.completed ? "completed" : ""}`} key={item.id}><button className="check-button" onClick={() => mutate((current) => ({ ...current, assignments: current.assignments.map((entry) => entry.id === item.id ? { ...entry, completed: !entry.completed } : entry) }))}>{item.completed && <CheckCircle2 size={14} />}</button><div><strong>{item.title}</strong><small>{item.description || "Sem descrição"}</small></div><span className={`priority priority-${item.priority.toLowerCase()}`}>{item.priority}</span><time>{new Date(`${item.dueDate}T12:00`).toLocaleDateString("pt-BR")}</time><button className="icon-button danger" onClick={() => window.confirm(`Excluir “${item.title}”?`) && mutate((current) => ({ ...current, assignments: current.assignments.filter((entry) => entry.id !== item.id) }))}><Trash2 size={17} /></button></div>)}{!assignments.length && <div className="empty-state"><BriefcaseBusiness /><p>Nenhum trabalho cadastrado.</p></div>}</div></section>}
-  {tab === "checklists" && <section className="subject-section embedded-checklists"><Checklists data={data} mutate={mutate} fixedSubjectId={subjectId} /></section>}
-  {tab === "timer" && <section className="subject-section timer-subject"><TimerPanel scope="subject" subjectId={subjectId} timer={timer} label={subject.title} onStart={onTimerStart} onUpdate={onTimerUpdate} onDelete={onTimerDelete} onComplete={onTimerComplete} /></section>}
-  {tab === "notebooks" && <section className="subject-section"><div className="section-heading"><div><span className="eyebrow">ANOTAÇÕES</span><h2>Seus cadernos</h2></div><button className="primary-button" onClick={createNotebook}><Plus size={18} /> Novo caderno</button></div>{openNotebook ? <div className="notebook-workspace"><aside><button className="text-button" onClick={() => { setOpenNotebook(undefined); setOpenNote(undefined); }}><ArrowLeft size={16} /> Cadernos</button><div className="notebook-aside-title"><h3>{notebooks.find((item) => item.id === openNotebook)?.title}</h3><button onClick={() => renameNotebook(openNotebook)} aria-label="Renomear caderno"><Pencil size={14} /></button><button className="danger" onClick={() => deleteNotebook(openNotebook)} aria-label="Excluir caderno"><Trash2 size={14} /></button></div>{notes.filter((item) => item.notebookId === openNotebook).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((note) => <button className={openNote === note.id ? "active" : ""} onClick={() => setOpenNote(note.id)} key={note.id}><FileText size={15} /><span>{note.title}</span></button>)}<button className="new-note" onClick={() => createNote(openNotebook)}><Plus size={15} /> Nova anotação</button></aside><div>{openNote && notes.find((item) => item.id === openNote) ? <NoteEditor key={openNote} note={notes.find((item) => item.id === openNote)!} onSave={(note) => mutate((current) => ({ ...current, notebooks: current.notebooks.map((item) => item.id === note.notebookId ? { ...item, updatedAt: note.updatedAt } : item), notes: current.notes.map((item) => item.id === note.id ? note : item) }))} onDelete={() => deleteNote(openNote)} onSaveLink={(url) => mutate((current) => { if (current.resources.length >= LIMITS.resources || current.resources.some((item) => item.url === url)) return current; const now = new Date().toISOString(); return { ...current, resources: [{ id: crypto.randomUUID(), subjectId, title: resourceHost(url), url, type: "link", description: `Salvo a partir do caderno ${notebooks.find((item) => item.id === openNotebook)?.title ?? "Anotações"}.`, tags: [], collection: notebooks.find((item) => item.id === openNotebook)?.title ?? "Links dos cadernos", createdAt: now, updatedAt: now }, ...current.resources] }; })} /> : <div className="empty-state"><NotebookPen /><p>Selecione ou crie uma anotação.</p></div>}</div></div> : <div className="notebook-grid">{notebooks.map((notebook) => <article className="notebook-card" key={notebook.id}><button className="notebook-card-main" onClick={() => { setOpenNotebook(notebook.id); setOpenNote(notes.filter((item) => item.notebookId === notebook.id).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.id); }}><NotebookPen /><div><strong>{notebook.title}</strong><small>{notes.filter((item) => item.notebookId === notebook.id).length} anotações · atualizado em {new Date(notebook.updatedAt).toLocaleDateString("pt-BR")}</small></div><ChevronRight /></button><div className="notebook-card-actions"><button onClick={() => renameNotebook(notebook.id)} aria-label="Renomear"><Pencil /></button><button className="danger" onClick={() => deleteNotebook(notebook.id)} aria-label="Excluir"><Trash2 /></button></div></article>)}{!notebooks.length && <div className="empty-state panel empty-wide"><NotebookPen /><h3>Nenhum caderno</h3><p>Crie um caderno para começar suas anotações.</p></div>}</div>}</section>}
-  {tab === "library" && <section className="subject-section embedded-library"><Biblioteca data={data} mutate={mutate} fixedSubjectId={subjectId} embedded /></section>}
-  {tab === "flashcards" && <section className="subject-section embedded-cards"><Flashcards cards={cards} subjects={data.subjects} fixedSubject={subject} onAdd={(card) => mutate((current) => ({ ...current, flashcards: [...current.flashcards, { ...card, id: crypto.randomUUID(), mastered: false }] }))} onAddMany={(newCards) => mutate((current) => ({ ...current, flashcards: [...current.flashcards, ...newCards.slice(0, Math.min(LIMITS.flashcards - current.flashcards.length, LIMITS.flashcardsPerSubject - current.flashcards.filter((item) => item.subjectId === subjectId).length)).map((card) => ({ ...card, id: crypto.randomUUID(), mastered: false }))] }))} onToggleMastered={(id) => mutate((current) => ({ ...current, flashcards: current.flashcards.map((item) => item.id === id ? { ...item, mastered: !item.mastered } : item) }))} onUpdateMany={(ids, changes) => mutate((current) => { const selected = new Set(ids); return { ...current, flashcards: current.flashcards.map((item) => selected.has(item.id) ? { ...item, ...changes } : item) }; })} onRemove={(id) => mutate((current) => ({ ...current, flashcards: current.flashcards.filter((item) => item.id !== id) }))} onRemoveMany={(ids) => mutate((current) => { const selected = new Set(ids); return { ...current, flashcards: current.flashcards.filter((item) => !selected.has(item.id)) }; })} /></section>}
-  {tab === "questions" && <section className="subject-section embedded-questions"><Questoes data={data} mutate={mutate} fixedSubjectId={subjectId} embedded onContextChange={setQuestionTrail} /></section>}<nav className="subject-breadcrumb" aria-label="Caminho atual"><button onClick={() => setTab("overview")}>{subject.title}</button>{detailTrail.map((segment, index) => <span key={`${segment}-${index}`}><ChevronRight />{index === 0 ? <button onClick={() => setTab(tab)}>{segment}</button> : <em>{segment}</em>}</span>)}<button className="breadcrumb-exit" onClick={onBack}><ArrowLeft /> Matérias</button></nav></main>;
+function SubjectWorkspace({
+  data,
+  subjectId,
+  onBack,
+  mutate,
+  onTimerStart,
+  onTimerUpdate,
+  onTimerDelete,
+  onTimerComplete,
+}: Props) {
+  const dialog = useDialog();
+  const [tab, setTab] = useState<Tab>("overview");
+  const [showForm, setShowForm] = useState(false);
+  const [openNotebook, setOpenNotebook] = useState<string>();
+  const [openNote, setOpenNote] = useState<string>();
+  const [questionTrail, setQuestionTrail] = useState<string[]>([
+    "Banco de questões",
+  ]);
+  const subject = data.subjects.find((item) => item.id === subjectId);
+  if (!subject) return null;
+  const assignments = data.assignments.filter(
+    (item) => item.subjectId === subjectId,
+  );
+  const checklists = data.checklists.filter(
+    (item) => item.subjectId === subjectId,
+  );
+  const cards = data.flashcards.filter((item) => item.subjectId === subjectId);
+  const notebooks = data.notebooks.filter(
+    (item) => item.subjectId === subjectId,
+  );
+  const notes = data.notes.filter((item) => item.subjectId === subjectId);
+  const timer = data.timers.find((item) => item.subjectId === subjectId);
+  const submitAssignment = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (
+      assignments.length >= LIMITS.assignmentsPerSubject ||
+      data.assignments.length >= LIMITS.assignments
+    )
+      return;
+    const form = new FormData(event.currentTarget);
+    mutate((current) => {
+      const assignment: Assignment = {
+        id: crypto.randomUUID(),
+        subjectId,
+        title: String(form.get("title")).trim(),
+        description: String(form.get("description")).trim(),
+        dueDate: String(form.get("dueDate")),
+        priority: String(form.get("priority")) as Assignment["priority"],
+        completed: false,
+      };
+      return {
+        ...current,
+        assignments: [assignment, ...current.assignments],
+        scheduleEntries:
+          current.scheduleEntries.length < LIMITS.scheduleEntries
+            ? [...current.scheduleEntries, assignmentScheduleEntry(assignment)]
+            : current.scheduleEntries,
+      };
+    });
+    setShowForm(false);
+  };
+  const createNotebook = async () => {
+    if (
+      notebooks.length >= LIMITS.notebooksPerSubject ||
+      data.notebooks.length >= LIMITS.notebooks
+    )
+      return;
+    const title = (
+      await dialog.prompt({
+        title: "Nome do novo caderno",
+        placeholder: "Ex.: Anotações de Aula",
+        confirmText: "Criar caderno",
+      })
+    )?.trim();
+    if (!title) return;
+    const id = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    mutate((current) => ({
+      ...current,
+      notebooks: [
+        ...current.notebooks,
+        {
+          id,
+          subjectId,
+          title: title.slice(0, 120),
+          createdAt,
+          updatedAt: createdAt,
+        },
+      ],
+    }));
+    setOpenNotebook(id);
+    setOpenNote(undefined);
+  };
+  const renameNotebook = async (id: string) => {
+    const notebook = notebooks.find((item) => item.id === id);
+    if (!notebook) return;
+    const title = (
+      await dialog.prompt({
+        title: "Renomear caderno",
+        defaultValue: notebook.title,
+        confirmText: "Salvar",
+      })
+    )?.trim();
+    if (title)
+      mutate((current) => ({
+        ...current,
+        notebooks: current.notebooks.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                title: title.slice(0, 120),
+                updatedAt: new Date().toISOString(),
+              }
+            : item,
+        ),
+      }));
+  };
+  const deleteNotebook = async (id: string) => {
+    const notebook = notebooks.find((item) => item.id === id);
+    if (!notebook) return;
+    const confirmed = await dialog.confirm({
+      title: `Excluir “${notebook.title}”?`,
+      message:
+        "Todas as anotações deste caderno serão excluídas permanentemente.",
+      danger: true,
+      confirmText: "Excluir caderno",
+    });
+    if (!confirmed) return;
+    mutate((current) => ({
+      ...current,
+      notebooks: current.notebooks.filter((item) => item.id !== id),
+      notes: current.notes.filter((item) => item.notebookId !== id),
+    }));
+    if (openNotebook === id) {
+      setOpenNotebook(undefined);
+      setOpenNote(undefined);
+    }
+  };
+  const createNote = (notebookId: string) => {
+    const id = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    mutate((current) => ({
+      ...current,
+      notebooks: current.notebooks.map((item) =>
+        item.id === notebookId ? { ...item, updatedAt: createdAt } : item,
+      ),
+      notes: [
+        ...current.notes,
+        {
+          id,
+          notebookId,
+          subjectId,
+          title: "Nova anotação",
+          content: "",
+          createdAt,
+          updatedAt: createdAt,
+        },
+      ],
+    }));
+    setOpenNote(id);
+  };
+  const deleteNote = async (id: string) => {
+    const note = notes.find((item) => item.id === id);
+    if (!note) return;
+    const confirmed = await dialog.confirm({
+      title: `Excluir a anotação “${note.title}”?`,
+      danger: true,
+      confirmText: "Excluir anotação",
+    });
+    if (!confirmed) return;
+    mutate((current) => ({
+      ...current,
+      notes: current.notes.filter((item) => item.id !== id),
+    }));
+    const remaining = notes.find(
+      (item) => item.notebookId === note.notebookId && item.id !== id,
+    );
+    setOpenNote(remaining?.id);
+  };
+  const nav = [
+    { id: "overview", label: "Visão geral" },
+    { id: "assignments", label: "Trabalhos" },
+    { id: "checklists", label: "Checklists" },
+    { id: "timer", label: "Timer" },
+    { id: "notebooks", label: "Cadernos" },
+    { id: "library", label: "Materiais" },
+    { id: "flashcards", label: "Flashcards" },
+    { id: "questions", label: "Questões" },
+  ] as const;
+  const tabLabel = nav.find((item) => item.id === tab)?.label ?? "Visão geral";
+  const notebook = notebooks.find((item) => item.id === openNotebook);
+  const notebookNote = notes.find((item) => item.id === openNote);
+  const detailTrail =
+    tab === "questions"
+      ? questionTrail
+      : tab === "notebooks"
+        ? [
+            tabLabel,
+            ...(notebook ? [notebook.title] : []),
+            ...(notebookNote ? [notebookNote.title] : []),
+          ]
+        : [tabLabel];
+  const bannerSeconds = timer
+    ? timer.type === "pomodoro"
+      ? timer.remainingSeconds
+      : timer.elapsedSeconds
+    : 0;
+  return (
+    <main
+      className="subject-workspace"
+      style={{ "--subject-color": subject.color } as React.CSSProperties}
+    >
+      <header className="subject-header">
+        <button
+          className="back-button"
+          onClick={onBack}
+          aria-label="Voltar para matérias"
+        >
+          <ArrowLeft />
+        </button>
+        <span className="subject-dot" />
+        <div>
+          <span className="eyebrow">ESPAÇO DA MATÉRIA</span>
+          <h1>{subject.title}</h1>
+        </div>
+      </header>
+      {timer && tab !== "timer" && (
+        <button
+          className="subject-timer-banner"
+          onClick={() => setTab("timer")}
+        >
+          <TimerIcon size={17} />
+          <span>
+            <strong>
+              {timer.type === "pomodoro"
+                ? `${timer.mode === "focus" ? "Foco" : "Intervalo"} em ${subject.title}`
+                : `Cronômetro de ${subject.title}`}
+            </strong>
+            <small>
+              {formatTimer(bannerSeconds, timer.type === "stopwatch")} ·{" "}
+              {timer.status === "running" ? "em andamento" : "pausado"}
+            </small>
+          </span>
+          <ChevronRight />
+        </button>
+      )}
+      <nav className="subject-tabs">
+        {nav.map((item) => (
+          <button
+            className={tab === item.id ? "active" : ""}
+            onClick={() => {
+              setTab(item.id);
+              setShowForm(false);
+            }}
+            key={item.id}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+      {tab === "overview" && (
+        <section className="subject-overview">
+          <div className="subject-welcome">
+            <span className="eyebrow">SUA ROTINA</span>
+            <h2>
+              Tudo sobre {subject.title}, <br />
+              em um só lugar.
+            </h2>
+            <p>Continue de onde parou ou organize o próximo passo.</p>
+            {timer ? (
+              <button
+                className="primary-button"
+                onClick={() => setTab("timer")}
+              >
+                <TimerIcon size={18} /> Continuar sessão
+              </button>
+            ) : (
+              <button
+                className="primary-button"
+                onClick={() => setTab("timer")}
+              >
+                <TimerIcon size={18} /> Iniciar foco
+              </button>
+            )}
+          </div>
+          <div className="subject-overview-grid">
+            <button onClick={() => setTab("assignments")}>
+              <BriefcaseBusiness />
+              <strong>
+                {assignments.filter((item) => !item.completed).length}
+              </strong>
+              <span>trabalhos pendentes</span>
+            </button>
+            <button onClick={() => setTab("checklists")}>
+              <CheckSquare2 />
+              <strong>{checklists.length}</strong>
+              <span>checklists</span>
+            </button>
+            <button onClick={() => setTab("notebooks")}>
+              <NotebookPen />
+              <strong>{notebooks.length}</strong>
+              <span>cadernos</span>
+            </button>
+            <button onClick={() => setTab("flashcards")}>
+              <BookOpen />
+              <strong>{cards.length}</strong>
+              <span>flashcards</span>
+            </button>
+          </div>
+        </section>
+      )}
+      {tab === "assignments" && (
+        <section className="subject-section">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">PROJETOS E ENTREGAS</span>
+              <h2>Seus trabalhos</h2>
+            </div>
+            <button
+              className="primary-button"
+              onClick={() => setShowForm(!showForm)}
+            >
+              <Plus size={18} /> Novo trabalho
+            </button>
+          </div>
+          {showForm && (
+            <form
+              className="subject-inline-form panel"
+              onSubmit={submitAssignment}
+            >
+              <label>
+                Título
+                <input
+                  name="title"
+                  maxLength={LIMITS.title}
+                  required
+                  autoFocus
+                />
+              </label>
+              <label>
+                Descrição
+                <input name="description" maxLength={10_000} />
+              </label>
+              <label>
+                Prazo
+                <input name="dueDate" type="date" required />
+              </label>
+              <label>
+                Prioridade
+                <select name="priority">
+                  <option>Média</option>
+                  <option>Alta</option>
+                  <option>Baixa</option>
+                </select>
+              </label>
+              <button className="primary-button">Adicionar</button>
+            </form>
+          )}
+          <div className="panel subject-items">
+            {assignments.map((item) => (
+              <div
+                className={`assignment-row ${item.completed ? "completed" : ""}`}
+                key={item.id}
+              >
+                <button
+                  className="check-button"
+                  onClick={() =>
+                    mutate((current) => ({
+                      ...current,
+                      assignments: current.assignments.map((entry) =>
+                        entry.id === item.id
+                          ? { ...entry, completed: !entry.completed }
+                          : entry,
+                      ),
+                    }))
+                  }
+                >
+                  {item.completed && <CheckCircle2 size={14} />}
+                </button>
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>{item.description || "Sem descrição"}</small>
+                </div>
+                <span
+                  className={`priority priority-${item.priority.toLowerCase()}`}
+                >
+                  {item.priority}
+                </span>
+                <time>
+                  {new Date(`${item.dueDate}T12:00`).toLocaleDateString(
+                    "pt-BR",
+                  )}
+                </time>
+                <button
+                  className="icon-button danger"
+                  onClick={async () => {
+                    if (
+                      await dialog.confirm({
+                        title: `Excluir “${item.title}”?`,
+                        danger: true,
+                        confirmText: "Excluir",
+                      })
+                    ) {
+                      mutate((current) => ({
+                        ...current,
+                        assignments: current.assignments.filter(
+                          (entry) => entry.id !== item.id,
+                        ),
+                      }));
+                    }
+                  }}
+                >
+                  <Trash2 size={17} />
+                </button>
+              </div>
+            ))}
+            {!assignments.length && (
+              <div className="empty-state">
+                <BriefcaseBusiness />
+                <p>Nenhum trabalho cadastrado.</p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+      {tab === "checklists" && (
+        <section className="subject-section embedded-checklists">
+          <Checklists data={data} mutate={mutate} fixedSubjectId={subjectId} />
+        </section>
+      )}
+      {tab === "timer" && (
+        <section className="subject-section timer-subject">
+          <TimerPanel
+            scope="subject"
+            subjectId={subjectId}
+            timer={timer}
+            label={subject.title}
+            onStart={onTimerStart}
+            onUpdate={onTimerUpdate}
+            onDelete={onTimerDelete}
+            onComplete={onTimerComplete}
+          />
+        </section>
+      )}
+      {tab === "notebooks" && (
+        <section className="subject-section">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">ANOTAÇÕES</span>
+              <h2>Seus cadernos</h2>
+            </div>
+            <button className="primary-button" onClick={createNotebook}>
+              <Plus size={18} /> Novo caderno
+            </button>
+          </div>
+          {openNotebook ? (
+            <div className="notebook-workspace">
+              <aside>
+                <button
+                  className="text-button"
+                  onClick={() => {
+                    setOpenNotebook(undefined);
+                    setOpenNote(undefined);
+                  }}
+                >
+                  <ArrowLeft size={16} /> Cadernos
+                </button>
+                <div className="notebook-aside-title">
+                  <h3>
+                    {notebooks.find((item) => item.id === openNotebook)?.title}
+                  </h3>
+                  <button
+                    onClick={() => renameNotebook(openNotebook)}
+                    aria-label="Renomear caderno"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    className="danger"
+                    onClick={() => deleteNotebook(openNotebook)}
+                    aria-label="Excluir caderno"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                {notes
+                  .filter((item) => item.notebookId === openNotebook)
+                  .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+                  .map((note) => (
+                    <button
+                      className={openNote === note.id ? "active" : ""}
+                      onClick={() => setOpenNote(note.id)}
+                      key={note.id}
+                    >
+                      <FileText size={15} />
+                      <span>{note.title}</span>
+                    </button>
+                  ))}
+                <button
+                  className="new-note"
+                  onClick={() => createNote(openNotebook)}
+                >
+                  <Plus size={15} /> Nova anotação
+                </button>
+              </aside>
+              <div>
+                {openNote && notes.find((item) => item.id === openNote) ? (
+                  <NoteEditor
+                    key={openNote}
+                    note={notes.find((item) => item.id === openNote)!}
+                    onSave={(note) =>
+                      mutate((current) => ({
+                        ...current,
+                        notebooks: current.notebooks.map((item) =>
+                          item.id === note.notebookId
+                            ? { ...item, updatedAt: note.updatedAt }
+                            : item,
+                        ),
+                        notes: current.notes.map((item) =>
+                          item.id === note.id ? note : item,
+                        ),
+                      }))
+                    }
+                    onDelete={() => deleteNote(openNote)}
+                    onSaveLink={(url) =>
+                      mutate((current) => {
+                        if (
+                          current.resources.length >= LIMITS.resources ||
+                          current.resources.some((item) => item.url === url)
+                        )
+                          return current;
+                        const now = new Date().toISOString();
+                        return {
+                          ...current,
+                          resources: [
+                            {
+                              id: crypto.randomUUID(),
+                              subjectId,
+                              title: resourceHost(url),
+                              url,
+                              type: "link",
+                              description: `Salvo a partir do caderno ${notebooks.find((item) => item.id === openNotebook)?.title ?? "Anotações"}.`,
+                              tags: [],
+                              collection:
+                                notebooks.find(
+                                  (item) => item.id === openNotebook,
+                                )?.title ?? "Links dos cadernos",
+                              createdAt: now,
+                              updatedAt: now,
+                            },
+                            ...current.resources,
+                          ],
+                        };
+                      })
+                    }
+                  />
+                ) : (
+                  <div className="empty-state">
+                    <NotebookPen />
+                    <p>Selecione ou crie uma anotação.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="notebook-grid">
+              {notebooks.map((notebook) => (
+                <article className="notebook-card" key={notebook.id}>
+                  <button
+                    className="notebook-card-main"
+                    onClick={() => {
+                      setOpenNotebook(notebook.id);
+                      setOpenNote(
+                        notes
+                          .filter((item) => item.notebookId === notebook.id)
+                          .sort((a, b) =>
+                            b.updatedAt.localeCompare(a.updatedAt),
+                          )[0]?.id,
+                      );
+                    }}
+                  >
+                    <NotebookPen />
+                    <div>
+                      <strong>{notebook.title}</strong>
+                      <small>
+                        {
+                          notes.filter(
+                            (item) => item.notebookId === notebook.id,
+                          ).length
+                        }{" "}
+                        anotações · atualizado em{" "}
+                        {new Date(notebook.updatedAt).toLocaleDateString(
+                          "pt-BR",
+                        )}
+                      </small>
+                    </div>
+                    <ChevronRight />
+                  </button>
+                  <div className="notebook-card-actions">
+                    <button
+                      onClick={() => renameNotebook(notebook.id)}
+                      aria-label="Renomear"
+                    >
+                      <Pencil />
+                    </button>
+                    <button
+                      className="danger"
+                      onClick={() => deleteNotebook(notebook.id)}
+                      aria-label="Excluir"
+                    >
+                      <Trash2 />
+                    </button>
+                  </div>
+                </article>
+              ))}
+              {!notebooks.length && (
+                <div className="empty-state panel empty-wide">
+                  <NotebookPen />
+                  <h3>Nenhum caderno</h3>
+                  <p>Crie um caderno para começar suas anotações.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+      {tab === "library" && (
+        <section className="subject-section embedded-library">
+          <Biblioteca
+            data={data}
+            mutate={mutate}
+            fixedSubjectId={subjectId}
+            embedded
+          />
+        </section>
+      )}
+      {tab === "flashcards" && (
+        <section className="subject-section embedded-cards">
+          <Flashcards
+            cards={cards}
+            subjects={data.subjects}
+            fixedSubject={subject}
+            onAdd={(card) =>
+              mutate((current) => ({
+                ...current,
+                flashcards: [
+                  ...current.flashcards,
+                  { ...card, id: crypto.randomUUID(), mastered: false },
+                ],
+              }))
+            }
+            onAddMany={(newCards) =>
+              mutate((current) => ({
+                ...current,
+                flashcards: [
+                  ...current.flashcards,
+                  ...newCards
+                    .slice(
+                      0,
+                      Math.min(
+                        LIMITS.flashcards - current.flashcards.length,
+                        LIMITS.flashcardsPerSubject -
+                          current.flashcards.filter(
+                            (item) => item.subjectId === subjectId,
+                          ).length,
+                      ),
+                    )
+                    .map((card) => ({
+                      ...card,
+                      id: crypto.randomUUID(),
+                      mastered: false,
+                    })),
+                ],
+              }))
+            }
+            onToggleMastered={(id) =>
+              mutate((current) => ({
+                ...current,
+                flashcards: current.flashcards.map((item) =>
+                  item.id === id ? { ...item, mastered: !item.mastered } : item,
+                ),
+              }))
+            }
+            onUpdateMany={(ids, changes) =>
+              mutate((current) => {
+                const selected = new Set(ids);
+                return {
+                  ...current,
+                  flashcards: current.flashcards.map((item) =>
+                    selected.has(item.id) ? { ...item, ...changes } : item,
+                  ),
+                };
+              })
+            }
+            onRemove={(id) =>
+              mutate((current) => ({
+                ...current,
+                flashcards: current.flashcards.filter((item) => item.id !== id),
+              }))
+            }
+            onRemoveMany={(ids) =>
+              mutate((current) => {
+                const selected = new Set(ids);
+                return {
+                  ...current,
+                  flashcards: current.flashcards.filter(
+                    (item) => !selected.has(item.id),
+                  ),
+                };
+              })
+            }
+          />
+        </section>
+      )}
+      {tab === "questions" && (
+        <section className="subject-section embedded-questions">
+          <Questoes
+            data={data}
+            mutate={mutate}
+            fixedSubjectId={subjectId}
+            embedded
+            onContextChange={setQuestionTrail}
+          />
+        </section>
+      )}
+      <nav className="subject-breadcrumb" aria-label="Caminho atual">
+        <button onClick={() => setTab("overview")}>{subject.title}</button>
+        {detailTrail.map((segment, index) => (
+          <span key={`${segment}-${index}`}>
+            <ChevronRight />
+            {index === 0 ? (
+              <button onClick={() => setTab(tab)}>{segment}</button>
+            ) : (
+              <em>{segment}</em>
+            )}
+          </span>
+        ))}
+        <button className="breadcrumb-exit" onClick={onBack}>
+          <ArrowLeft /> Matérias
+        </button>
+      </nav>
+    </main>
+  );
 }
 export default SubjectWorkspace;
