@@ -1,10 +1,25 @@
 import { BookOpen, Grid2X2, List, MoreVertical, Plus, Timer, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { LIMITS, SUBJECT_COLORS, formatTimer, type AppData, type Subject } from "../data";
+import { useDialog } from "../components/DialogModal";
 type Props = { data: AppData; onOpen: (id: string) => void; onAdd: (subject: Omit<Subject, "id" | "createdAt">) => void; onRemove: (id: string, action: "delete" | "general") => void; onViewChange: (view: "grid" | "list") => void };
 function Subjects({ data, onOpen, onAdd, onRemove, onViewChange }: Props) {
+  const dialog = useDialog();
   const [showForm, setShowForm] = useState(false); const [color, setColor] = useState(SUBJECT_COLORS[0]); const [deleting, setDeleting] = useState<Subject>();
-  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (data.subjects.length >= LIMITS.subjects) return; const form = new FormData(event.currentTarget); onAdd({ title: String(form.get("title")).trim(), color }); event.currentTarget.reset(); setShowForm(false); };
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (data.subjects.length >= LIMITS.subjects) {
+      void dialog.alert({
+        title: "Limite de matérias atingido",
+        message: `O limite de ${LIMITS.subjects} matérias foi atingido.`,
+      });
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    onAdd({ title: String(form.get("title")).trim(), color });
+    event.currentTarget.reset();
+    setShowForm(false);
+  };
   const remove = (action: "delete" | "general") => { if (!deleting) return; onRemove(deleting.id, action); setDeleting(undefined); };
   return <main className="page subjects-page"><div className="page-toolbar"><p className="muted">{data.subjects.length} de {LIMITS.subjects} matérias</p><div className="subject-toolbar"><div className="view-switch"><button className={data.subjectView === "grid" ? "active" : ""} onClick={() => onViewChange("grid")}><Grid2X2 /></button><button className={data.subjectView === "list" ? "active" : ""} onClick={() => onViewChange("list")}><List /></button></div><button className="primary-button" onClick={() => setShowForm(!showForm)}><Plus /> Nova matéria</button></div></div>
   {showForm && <form className="subject-create panel" onSubmit={submit}><label>Nome da matéria<input name="title" maxLength={LIMITS.subjectTitle} autoFocus required /></label><fieldset><legend>Cor de identificação</legend><div className="color-picker">{SUBJECT_COLORS.map((item) => <button type="button" aria-label={`Cor ${item}`} className={color === item ? "selected" : ""} style={{ background: item }} onClick={() => setColor(item)} key={item} />)}</div></fieldset><button className="primary-button">Criar matéria</button></form>}

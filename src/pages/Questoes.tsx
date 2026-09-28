@@ -1,26 +1,32 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 import {
+  Award,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CircleHelp,
+  Clock3,
   FileInput,
+  Pause,
   Pencil,
   Play,
   Plus,
   Search,
   Shuffle,
   Sparkles,
+  Timer,
   Trash2,
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  formatTimer,
   LIMITS,
   subjectName,
   type AppData,
   type Question,
   type SimulationAttempt,
+  type SimulationMode,
 } from "../data";
 import {
   parseQuestionsText,
@@ -29,6 +35,7 @@ import {
 } from "../questionParser";
 import { useDialog } from "../components/DialogModal";
 import AiPromptModal from "../components/AiPromptModal";
+import SimulationTimelineChart from "../components/SimulationTimelineChart";
 
 type Props = {
   data: AppData;
@@ -78,6 +85,11 @@ function Questoes({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeAttempt, setActiveAttempt] = useState<string>();
   const [questionIndex, setQuestionIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [pauseReason, setPauseReason] = useState<
+    "manual" | "inactivity" | "visibility"
+  >("manual");
+  const [formMode, setFormMode] = useState<SimulationMode>("fixacao");
   const [reviewing, setReviewing] = useState<string>();
   const [selectionCategory, setSelectionCategory] = useState("");
   const [bulkSubject, setBulkSubject] = useState("");
@@ -161,6 +173,13 @@ function Questoes({
       }))
       .filter((item) => item.text);
     if (clean.length < 2) return;
+    if (!editing && data.questions.length >= LIMITS.questions) {
+      void dialog.alert({
+        title: "Limite do banco de questões atingido",
+        message: `O limite de ${LIMITS.questions.toLocaleString("pt-BR")} questões foi atingido.`,
+      });
+      return;
+    }
     const stamp = now();
     const question: Question = {
       id: editing?.id ?? crypto.randomUUID(),
@@ -219,12 +238,14 @@ function Questoes({
     setSelected((value) => new Set([...value].filter((item) => item !== id)));
   };
   const importQuestions = () => {
-    if (
-      !preview?.questions.length ||
-      preview.errors.length ||
-      data.questions.length + preview.questions.length > LIMITS.questions
-    )
+    if (!preview?.questions.length || preview.errors.length) return;
+    if (data.questions.length + preview.questions.length > LIMITS.questions) {
+      void dialog.alert({
+        title: "Limite do banco de questões excedido",
+        message: `O limite do banco é de ${LIMITS.questions.toLocaleString("pt-BR")} questões. Atualmente existem ${data.questions.length.toLocaleString("pt-BR")}.`,
+      });
       return;
+    }
     const stamp = now();
     mutate((current) => ({
       ...current,
@@ -246,9 +267,34 @@ function Questoes({
     const ids = selected.size
       ? [...selected]
       : questions.map((item) => item.id);
-    if (!ids.length || ids.length > LIMITS.simulationQuestions) return;
+    if (!ids.length) {
+      void dialog.alert({
+        title: "Nenhuma questão selecionada",
+        message: "Selecione pelo menos uma questão para criar o simulado.",
+      });
+      return;
+    }
+    if (ids.length > LIMITS.simulationQuestions) {
+      void dialog.alert({
+        title: "Limite de questões excedido",
+        message: `Um simulado pode ter no máximo ${LIMITS.simulationQuestions} questões. Selecionadas: ${ids.length}.`,
+      });
+      return;
+    }
+    if (data.simulations.length >= LIMITS.simulations) {
+      void dialog.alert({
+        title: "Limite de simulados atingido",
+        message: `O limite de ${LIMITS.simulations} simulados salvos foi atingido.`,
+      });
+      return;
+    }
     const form = new FormData(event.currentTarget);
     const stamp = now();
+    const mode = (form.get("mode") as SimulationMode) || "fixacao";
+    const timeLimitMinutes =
+      mode === "cronometrado"
+        ? Math.max(1, Number(form.get("timeLimitMinutes")) || 45)
+        : undefined;
     mutate((current) => ({
       ...current,
       simulations: [
@@ -259,6 +305,8 @@ function Questoes({
           shuffleQuestions: form.get("shuffleQuestions") === "on",
           shuffleAlternatives: form.get("shuffleAlternatives") === "on",
           passingScore: Number(form.get("passingScore")) || 5,
+          mode,
+          timeLimitMinutes,
           createdAt: stamp,
           updatedAt: stamp,
         },
@@ -267,7 +315,9 @@ function Questoes({
     }));
     setSelected(new Set());
     event.currentTarget.reset();
+    setFormMode("fixacao");
   };
+
   const startSimulation = (simulationId: string) => {
     const simulation = data.simulations.find(
       (item) => item.id === simulationId,
@@ -291,7 +341,12 @@ function Questoes({
       answers: {},
       passingScore: simulation.passingScore,
       status: "in_progress",
+      mode: simulation.mode || "fixacao",
+      timeLimitMinutes: simulation.timeLimitMinutes,
       startedAt: now(),
+      totalElapsedSeconds: 0,
+      questionTimeSeconds: {},
+      excludedQuestionTimes: {},
     };
     mutate((current) => ({
       ...current,
@@ -299,11 +354,18 @@ function Questoes({
     }));
     setActiveAttempt(attempt.id);
     setQuestionIndex(0);
+    setIsPaused(false);
+    setPauseReason("manual");
   };
-  const submitAttempt = async (attempt: SimulationAttempt) => {
+
+  const submitAttempt = async (
+    attempt: SimulationAttempt,
+    reason: "standard" | "time_limit" = "standard",
+  ) => {
     const unanswered =
       attempt.questions.length - Object.keys(attempt.answers).length;
     if (
+      reason === "standard" &&
       !(await dialog.confirm({
         title: unanswered
           ? `Finalizar com ${unanswered} questão(ões) sem resposta?`
@@ -328,13 +390,139 @@ function Questoes({
               completedAt: now(),
               score,
               passed: score >= item.passingScore,
+              completionReason: reason,
             }
           : item,
       ),
     }));
     setActiveAttempt(undefined);
+    setIsPaused(false);
     setTab("history");
   };
+
+  const submitMasteryEarly = async (attempt: SimulationAttempt) => {
+    const correct = attempt.questions.filter(
+      (item) => attempt.answers[item.id] === item.correctAlternativeId,
+    ).length;
+    if (
+      !(await dialog.confirm({
+        title: "Encerrar por corte atingido?",
+        message: `Você acertou ${correct} de ${attempt.questions.length} questões com 100% de precisão nas respondidas, atingindo a nota de corte (${attempt.passingScore}). Deseja finalizar com este registro?`,
+        confirmText: "Finalizar por corte",
+      }))
+    )
+      return;
+    const score = Number(
+      ((correct / attempt.questions.length) * 10).toFixed(2),
+    );
+    mutate((current) => ({
+      ...current,
+      simulationAttempts: current.simulationAttempts.map((item) =>
+        item.id === attempt.id
+          ? {
+              ...item,
+              status: "completed",
+              completedAt: now(),
+              score,
+              passed: true,
+              completionReason: "mastery_cutoff",
+            }
+          : item,
+      ),
+    }));
+    setActiveAttempt(undefined);
+    setIsPaused(false);
+    setTab("history");
+  };
+
+  const toggleExcludeQuestionTime = (attemptId: string, questionId: string) => {
+    mutate((current) => ({
+      ...current,
+      simulationAttempts: current.simulationAttempts.map((item) => {
+        if (item.id !== attemptId) return item;
+        const currentExcluded = { ...(item.excludedQuestionTimes || {}) };
+        if (currentExcluded[questionId]) {
+          delete currentExcluded[questionId];
+        } else {
+          currentExcluded[questionId] = true;
+        }
+        return {
+          ...item,
+          excludedQuestionTimes: currentExcluded,
+        };
+      }),
+    }));
+  };
+
+  // 1-second ticker for active attempt
+  useEffect(() => {
+    if (!currentAttempt || currentAttempt.status !== "in_progress" || isPaused)
+      return;
+
+    const interval = window.setInterval(() => {
+      const qId = currentAttempt.questions[questionIndex]?.id;
+      mutate((current) => ({
+        ...current,
+        simulationAttempts: current.simulationAttempts.map((item) =>
+          item.id === currentAttempt.id
+            ? {
+                ...item,
+                totalElapsedSeconds: (item.totalElapsedSeconds || 0) + 1,
+                questionTimeSeconds: qId
+                  ? {
+                      ...item.questionTimeSeconds,
+                      [qId]: (item.questionTimeSeconds?.[qId] || 0) + 1,
+                    }
+                  : item.questionTimeSeconds,
+              }
+            : item,
+        ),
+      }));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentAttempt, mutate, isPaused, questionIndex]);
+
+  // Page visibility listener: auto-pause on tab switch or screen lock
+  useEffect(() => {
+    if (!currentAttempt || currentAttempt.status !== "in_progress") return;
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        setIsPaused(true);
+        setPauseReason("visibility");
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [currentAttempt]);
+
+  // Inactivity auto-pause: pause after 7 minutes without user interaction
+  useEffect(() => {
+    if (!currentAttempt || currentAttempt.status !== "in_progress" || isPaused)
+      return;
+    let timerId: number;
+    const resetTimer = () => {
+      window.clearTimeout(timerId);
+      timerId = window.setTimeout(
+        () => {
+          setIsPaused(true);
+          setPauseReason("inactivity");
+        },
+        7 * 60 * 1000,
+      );
+    };
+    resetTimer();
+    const events = ["mousedown", "touchstart", "keydown", "scroll"];
+    const handler = () => resetTimer();
+    events.forEach((ev) =>
+      window.addEventListener(ev, handler, { passive: true }),
+    );
+    return () => {
+      window.clearTimeout(timerId);
+      events.forEach((ev) => window.removeEventListener(ev, handler));
+    };
+  }, [currentAttempt, isPaused]);
   const selectVisible = () =>
     setSelected(new Set(questions.map((item) => item.id)));
   const selectCategoryItems = () =>
@@ -472,69 +660,155 @@ function Questoes({
   if (currentAttempt) {
     const question = currentAttempt.questions[questionIndex];
     const answered = Object.keys(currentAttempt.answers).length;
+    const isCronometrado = currentAttempt.mode === "cronometrado";
+    const totalSeconds = currentAttempt.totalElapsedSeconds || 0;
+    const limitSeconds = (currentAttempt.timeLimitMinutes || 45) * 60;
+    const remainingSeconds = Math.max(0, limitSeconds - totalSeconds);
+    const isTimeOver = isCronometrado && remainingSeconds === 0;
+    const currentQTime = currentAttempt.questionTimeSeconds?.[question.id] || 0;
+
+    const totalQ = currentAttempt.questions.length;
+    const neededCorrect = Math.ceil(
+      totalQ * (currentAttempt.passingScore / 10),
+    );
+    const correctCount = currentAttempt.questions.filter(
+      (item) => currentAttempt.answers[item.id] === item.correctAlternativeId,
+    ).length;
+    const canEarlyExit =
+      answered >= neededCorrect &&
+      correctCount === answered &&
+      answered < totalQ;
+
     return (
       <main className={`${embedded ? "" : "page "}question-area`}>
         <section className="panel attempt-runner">
           <div className="attempt-head">
             <div>
-              <span className="eyebrow">SIMULADO EM ANDAMENTO</span>
+              <span className="eyebrow">
+                {isCronometrado
+                  ? "SIMULADO CRONOMETRADO"
+                  : "SIMULADO EM FIXAÇÃO"}
+              </span>
               <h2>{currentAttempt.title}</h2>
-              <small>
-                {answered} de {currentAttempt.questions.length} respondidas
-              </small>
+              <div className="attempt-meta-line">
+                <small>
+                  {answered} de {currentAttempt.questions.length} respondidas
+                </small>
+                <span className="meta-separator">·</span>
+                <small>
+                  Nesta questão: <strong>{formatTimer(currentQTime)}</strong>
+                </small>
+              </div>
             </div>
-            <button
-              className="secondary-button"
-              onClick={() => setActiveAttempt(undefined)}
-            >
-              Salvar e sair
-            </button>
+            <div className="attempt-head-actions">
+              <div
+                className={`attempt-timer-badge ${isCronometrado && remainingSeconds < 300 ? "warning" : ""} ${isTimeOver ? "danger" : ""}`}
+                title={isCronometrado ? "Tempo restante" : "Tempo decorrido"}
+              >
+                <Timer size={15} />
+                <strong>
+                  {isCronometrado
+                    ? isTimeOver
+                      ? "00:00 (Esgotado)"
+                      : formatTimer(remainingSeconds, true)
+                    : formatTimer(totalSeconds, true)}
+                </strong>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => {
+                  setIsPaused((p) => !p);
+                  setPauseReason("manual");
+                }}
+                title={isPaused ? "Retomar" : "Pausar"}
+              >
+                {isPaused ? <Play size={18} /> : <Pause size={18} />}
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  setActiveAttempt(undefined);
+                  setIsPaused(false);
+                }}
+              >
+                Salvar e sair
+              </button>
+            </div>
           </div>
+
           <progress
             value={questionIndex + 1}
             max={currentAttempt.questions.length}
           />
-          <article className="attempt-question">
-            <span>Questão {questionIndex + 1}</span>
-            <h3>{question.statement}</h3>
-            {question.alternatives.map((alternative) => (
-              <label
-                className={
-                  currentAttempt.answers[question.id] === alternative.id
-                    ? "selected"
-                    : ""
-                }
-                key={alternative.id}
-              >
-                <input
-                  type="radio"
-                  name={question.id}
-                  checked={
+
+          {isPaused ? (
+            <div className="attempt-paused-overlay">
+              <div className="paused-card">
+                <Pause size={28} />
+                <h3>Simulado em pausa</h3>
+                <p>
+                  {pauseReason === "inactivity"
+                    ? "Pausado automaticamente por inatividade."
+                    : pauseReason === "visibility"
+                      ? "Pausado automaticamente ao sair da tela."
+                      : "O cronômetro está congelado."}
+                </p>
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    setIsPaused(false);
+                    setPauseReason("manual");
+                  }}
+                >
+                  <Play size={15} /> Retomar simulado
+                </button>
+              </div>
+            </div>
+          ) : (
+            <article className="attempt-question">
+              <span>Questão {questionIndex + 1}</span>
+              <h3>{question.statement}</h3>
+              {question.alternatives.map((alternative) => (
+                <label
+                  className={
                     currentAttempt.answers[question.id] === alternative.id
+                      ? "selected"
+                      : ""
                   }
-                  onChange={() =>
-                    mutate((current) => ({
-                      ...current,
-                      simulationAttempts: current.simulationAttempts.map(
-                        (item) =>
-                          item.id === currentAttempt.id
-                            ? {
-                                ...item,
-                                answers: {
-                                  ...item.answers,
-                                  [question.id]: alternative.id,
-                                },
-                              }
-                            : item,
-                      ),
-                    }))
-                  }
-                />
-                <strong>{alternative.id}</strong>
-                <span>{alternative.text}</span>
-              </label>
-            ))}
-          </article>
+                  key={alternative.id}
+                >
+                  <input
+                    type="radio"
+                    name={question.id}
+                    checked={
+                      currentAttempt.answers[question.id] === alternative.id
+                    }
+                    onChange={() =>
+                      mutate((current) => ({
+                        ...current,
+                        simulationAttempts: current.simulationAttempts.map(
+                          (item) =>
+                            item.id === currentAttempt.id
+                              ? {
+                                  ...item,
+                                  answers: {
+                                    ...item.answers,
+                                    [question.id]: alternative.id,
+                                  },
+                                }
+                              : item,
+                        ),
+                      }))
+                    }
+                  />
+                  <strong>{alternative.id}</strong>
+                  <span>{alternative.text}</span>
+                </label>
+              ))}
+            </article>
+          )}
+
           <div className="attempt-navigation">
             <button
               className="secondary-button"
@@ -543,21 +817,38 @@ function Questoes({
             >
               <ChevronLeft /> Anterior
             </button>
-            {questionIndex < currentAttempt.questions.length - 1 ? (
-              <button
-                className="primary-button"
-                onClick={() => setQuestionIndex((value) => value + 1)}
-              >
-                Próxima <ChevronRight />
-              </button>
-            ) : (
-              <button
-                className="primary-button"
-                onClick={() => submitAttempt(currentAttempt)}
-              >
-                <CheckCircle2 /> Finalizar
-              </button>
-            )}
+            <div className="attempt-nav-right">
+              {canEarlyExit && (
+                <button
+                  type="button"
+                  className="secondary-button mastery-button"
+                  onClick={() => submitMasteryEarly(currentAttempt)}
+                  title="Nota de corte já atingida com 100% de acerto nas respondidas"
+                >
+                  <Award size={15} /> Encerrar por corte atingido
+                </button>
+              )}
+              {questionIndex < currentAttempt.questions.length - 1 ? (
+                <button
+                  className="primary-button"
+                  onClick={() => setQuestionIndex((value) => value + 1)}
+                >
+                  Próxima <ChevronRight />
+                </button>
+              ) : (
+                <button
+                  className="primary-button"
+                  onClick={() =>
+                    submitAttempt(
+                      currentAttempt,
+                      isTimeOver ? "time_limit" : "standard",
+                    )
+                  }
+                >
+                  <CheckCircle2 /> Finalizar
+                </button>
+              )}
+            </div>
           </div>
         </section>
       </main>
@@ -1006,6 +1297,35 @@ function Questoes({
               />
             </label>
             <label>
+              Modo
+              <select
+                name="mode"
+                value={formMode}
+                onChange={(e) => setFormMode(e.target.value as SimulationMode)}
+              >
+                <option value="fixacao">Fixação (tempo progressivo)</option>
+                <option value="cronometrado">
+                  Cronometrado (tempo regressivo)
+                </option>
+              </select>
+            </label>
+            {formMode === "cronometrado" && (
+              <label>
+                Tempo limite (minutos)
+                <input
+                  name="timeLimitMinutes"
+                  type="number"
+                  min="1"
+                  max="720"
+                  defaultValue={Math.max(
+                    5,
+                    (selected.size || questions.length) * 3,
+                  )}
+                  required
+                />
+              </label>
+            )}
+            <label>
               Nota mínima (0–10)
               <input
                 name="passingScore"
@@ -1049,7 +1369,10 @@ function Questoes({
                     <h3>{simulation.title}</h3>
                     <p>
                       {simulation.questionIds.length} questões · meta{" "}
-                      {simulation.passingScore.toLocaleString("pt-BR")}
+                      {simulation.passingScore.toLocaleString("pt-BR")} ·{" "}
+                      {simulation.mode === "cronometrado"
+                        ? `Cronometrado (${simulation.timeLimitMinutes || 45} min)`
+                        : "Fixação"}
                     </p>
                   </div>
                   <div>
@@ -1112,6 +1435,30 @@ function Questoes({
                     )}
                   </span>
                   <div>
+                    <div className="history-badge-row">
+                      <span className="mode-pill">
+                        {attempt.mode === "cronometrado"
+                          ? "Cronometrado"
+                          : "Fixação"}
+                      </span>
+                      {attempt.completionReason === "mastery_cutoff" && (
+                        <span className="mode-pill mastery">
+                          Corte atingido ({Object.keys(attempt.answers).length}/
+                          {attempt.questions.length})
+                        </span>
+                      )}
+                      {attempt.completionReason === "time_limit" && (
+                        <span className="mode-pill time-limit">
+                          Tempo esgotado
+                        </span>
+                      )}
+                      {attempt.totalElapsedSeconds ? (
+                        <span className="history-meta-pill">
+                          <Clock3 size={11} />{" "}
+                          {formatTimer(attempt.totalElapsedSeconds, true)}
+                        </span>
+                      ) : null}
+                    </div>
                     <h3>{attempt.title}</h3>
                     <p>
                       {attempt.status === "completed"
@@ -1156,19 +1503,49 @@ function Questoes({
                 </div>
                 {reviewing === attempt.id && attempt.status === "completed" && (
                   <div className="panel attempt-review">
+                    <SimulationTimelineChart attempt={attempt} />
                     {attempt.questions.map((question, index) => {
                       const answer = attempt.answers[question.id];
                       const correct = answer === question.correctAlternativeId;
+                      const qTime =
+                        attempt.questionTimeSeconds?.[question.id] || 0;
+                      const isExcluded = Boolean(
+                        attempt.excludedQuestionTimes?.[question.id],
+                      );
                       return (
                         <article key={question.id}>
-                          <span>
-                            Questão {index + 1} ·{" "}
-                            {correct
-                              ? "Acertou"
-                              : answer
-                                ? "Errou"
-                                : "Não respondida"}
-                          </span>
+                          <div className="review-question-head">
+                            <span>
+                              Questão {index + 1} ·{" "}
+                              {correct
+                                ? "Acertou"
+                                : answer
+                                  ? "Errou"
+                                  : "Não respondida"}
+                              {" · "}
+                              Tempo: {formatTimer(qTime)}
+                              {isExcluded && (
+                                <strong className="excluded-label">
+                                  {" "}
+                                  (tempo desconsiderado da média)
+                                </strong>
+                              )}
+                            </span>
+                            <button
+                              type="button"
+                              className="text-toggle-btn"
+                              onClick={() =>
+                                toggleExcludeQuestionTime(
+                                  attempt.id,
+                                  question.id,
+                                )
+                              }
+                            >
+                              {isExcluded
+                                ? "Restaurar tempo na média"
+                                : "Desconsiderar tempo da média"}
+                            </button>
+                          </div>
                           <h4>{question.statement}</h4>
                           {question.alternatives.map((alternative) => (
                             <p

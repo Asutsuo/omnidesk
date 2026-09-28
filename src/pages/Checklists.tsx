@@ -93,11 +93,20 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
     const subjectCount = data.checklists.filter(
       (list) => list.subjectId === fixedSubjectId,
     ).length;
-    if (
-      data.checklists.length >= LIMITS.checklists ||
-      (fixedSubjectId && subjectCount >= LIMITS.checklistsPerSubject)
-    )
+    if (data.checklists.length >= LIMITS.checklists) {
+      void dialog.alert({
+        title: "Limite de checklists atingido",
+        message: `O limite de ${LIMITS.checklists.toLocaleString("pt-BR")} checklists foi atingido.`,
+      });
       return;
+    }
+    if (fixedSubjectId && subjectCount >= LIMITS.checklistsPerSubject) {
+      void dialog.alert({
+        title: "Limite de checklists da matéria atingido",
+        message: `O limite de ${LIMITS.checklistsPerSubject.toLocaleString("pt-BR")} checklists para esta matéria foi atingido.`,
+      });
+      return;
+    }
     const form = new FormData(event.currentTarget);
     const id = crypto.randomUUID();
     const createdAt = now();
@@ -164,7 +173,13 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
     const sections = data.checklistSections.filter(
       (section) => section.checklistId === open.id,
     );
-    if (sections.length >= LIMITS.checklistSections) return;
+    if (sections.length >= LIMITS.checklistSections) {
+      void dialog.alert({
+        title: "Limite de seções atingido",
+        message: `Um checklist pode ter no máximo ${LIMITS.checklistSections} seções.`,
+      });
+      return;
+    }
     const title = (
       await dialog.prompt({
         title: "Nova seção",
@@ -196,11 +211,20 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
     const items = data.checklistItems.filter(
       (item) => item.checklistId === open.id,
     );
-    if (
-      items.length >= LIMITS.checklistItemsPerList ||
-      data.checklistItems.length >= LIMITS.checklistItems
-    )
+    if (items.length >= LIMITS.checklistItemsPerList) {
+      void dialog.alert({
+        title: "Limite de itens do checklist atingido",
+        message: `Um checklist pode ter no máximo ${LIMITS.checklistItemsPerList.toLocaleString("pt-BR")} itens.`,
+      });
       return;
+    }
+    if (data.checklistItems.length >= LIMITS.checklistItems) {
+      void dialog.alert({
+        title: "Limite global de itens atingido",
+        message: `O limite de ${LIMITS.checklistItems.toLocaleString("pt-BR")} itens foi atingido.`,
+      });
+      return;
+    }
     const text = (
       await dialog.prompt({
         title: "Novo item",

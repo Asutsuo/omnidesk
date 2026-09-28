@@ -123,21 +123,24 @@ function Anotacoes({
       })
     )?.trim();
     if (!name) return;
-    mutate((current) =>
-      current.noteGroups.length >= LIMITS.noteGroups
-        ? current
-        : {
-            ...current,
-            noteGroups: [
-              ...current.noteGroups,
-              {
-                id: crypto.randomUUID(),
-                name: name.slice(0, 80),
-                order: current.noteGroups.length,
-              },
-            ],
-          },
-    );
+    if (data.noteGroups.length >= LIMITS.noteGroups) {
+      void dialog.alert({
+        title: "Limite de grupos atingido",
+        message: `O limite de ${LIMITS.noteGroups} grupos de anotações foi atingido.`,
+      });
+      return;
+    }
+    mutate((current) => ({
+      ...current,
+      noteGroups: [
+        ...current.noteGroups,
+        {
+          id: crypto.randomUUID(),
+          name: name.slice(0, 80),
+          order: current.noteGroups.length,
+        },
+      ],
+    }));
   };
   const renameGroup = async () => {
     if (!activeGroup) return;
@@ -184,12 +187,18 @@ function Anotacoes({
     }));
   };
   const createNote = () => {
+    if (data.quickNotes.length >= LIMITS.quickNotes) {
+      void dialog.alert({
+        title: "Limite de anotações atingido",
+        message: `O limite de ${LIMITS.quickNotes.toLocaleString("pt-BR")} anotações rápidas foi atingido.`,
+      });
+      return;
+    }
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     setEditingId(id);
     setShowArchived(false);
     mutate((current) => {
-      if (current.quickNotes.length >= LIMITS.quickNotes) return current;
       const selectedGroupId =
         current.noteWorkspace.selectedGroupId === FAVORITES_ID
           ? undefined

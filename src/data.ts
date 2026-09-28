@@ -158,6 +158,12 @@ export type Question = {
   createdAt: string;
   updatedAt: string;
 };
+export type SimulationMode = "fixacao" | "cronometrado";
+export type SimulationCompletionReason =
+  | "standard"
+  | "mastery_cutoff"
+  | "time_limit";
+
 export type Simulation = {
   id: string;
   title: string;
@@ -165,6 +171,8 @@ export type Simulation = {
   shuffleQuestions: boolean;
   shuffleAlternatives: boolean;
   passingScore: number;
+  mode?: SimulationMode;
+  timeLimitMinutes?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -176,10 +184,16 @@ export type SimulationAttempt = {
   answers: Record<string, string>;
   passingScore: number;
   status: "in_progress" | "completed";
+  mode: SimulationMode;
+  timeLimitMinutes?: number;
   startedAt: string;
   completedAt?: string;
   score?: number;
   passed?: boolean;
+  completionReason?: SimulationCompletionReason;
+  totalElapsedSeconds: number;
+  questionTimeSeconds: Record<string, number>;
+  excludedQuestionTimes?: Record<string, boolean>;
 };
 export type ScheduleCategory =
   | "study"
@@ -556,9 +570,39 @@ export function normalizeData(
         )
       : [],
     questions: Array.isArray(value.questions) ? value.questions : [],
-    simulations: Array.isArray(value.simulations) ? value.simulations : [],
+    simulations: Array.isArray(value.simulations)
+      ? value.simulations.map((item) => ({
+          ...item,
+          mode: item?.mode === "cronometrado" ? "cronometrado" : "fixacao",
+          timeLimitMinutes:
+            typeof item?.timeLimitMinutes === "number"
+              ? item.timeLimitMinutes
+              : undefined,
+        }))
+      : [],
     simulationAttempts: Array.isArray(value.simulationAttempts)
-      ? value.simulationAttempts
+      ? value.simulationAttempts.map((item) => ({
+          ...item,
+          mode: item?.mode === "cronometrado" ? "cronometrado" : "fixacao",
+          timeLimitMinutes:
+            typeof item?.timeLimitMinutes === "number"
+              ? item.timeLimitMinutes
+              : undefined,
+          totalElapsedSeconds:
+            typeof item?.totalElapsedSeconds === "number"
+              ? item.totalElapsedSeconds
+              : 0,
+          questionTimeSeconds:
+            item?.questionTimeSeconds &&
+            typeof item.questionTimeSeconds === "object"
+              ? item.questionTimeSeconds
+              : {},
+          excludedQuestionTimes:
+            item?.excludedQuestionTimes &&
+            typeof item.excludedQuestionTimes === "object"
+              ? item.excludedQuestionTimes
+              : {},
+        }))
       : [],
     scheduleEntries: [...storedSchedule, ...generatedSchedule].slice(
       0,

@@ -209,11 +209,20 @@ function SubjectWorkspace({
   const timer = data.timers.find((item) => item.subjectId === subjectId);
   const submitAssignment = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (
-      assignments.length >= LIMITS.assignmentsPerSubject ||
-      data.assignments.length >= LIMITS.assignments
-    )
+    if (data.assignments.length >= LIMITS.assignments) {
+      void dialog.alert({
+        title: "Limite de trabalhos atingido",
+        message: `O limite de ${LIMITS.assignments.toLocaleString("pt-BR")} trabalhos foi atingido.`,
+      });
       return;
+    }
+    if (assignments.length >= LIMITS.assignmentsPerSubject) {
+      void dialog.alert({
+        title: "Limite de trabalhos da matéria atingido",
+        message: `O limite de ${LIMITS.assignmentsPerSubject.toLocaleString("pt-BR")} trabalhos para esta matéria foi atingido.`,
+      });
+      return;
+    }
     const form = new FormData(event.currentTarget);
     mutate((current) => {
       const assignment: Assignment = {
@@ -237,11 +246,20 @@ function SubjectWorkspace({
     setShowForm(false);
   };
   const createNotebook = async () => {
-    if (
-      notebooks.length >= LIMITS.notebooksPerSubject ||
-      data.notebooks.length >= LIMITS.notebooks
-    )
+    if (data.notebooks.length >= LIMITS.notebooks) {
+      void dialog.alert({
+        title: "Limite de cadernos atingido",
+        message: `O limite de ${LIMITS.notebooks.toLocaleString("pt-BR")} cadernos foi atingido.`,
+      });
       return;
+    }
+    if (notebooks.length >= LIMITS.notebooksPerSubject) {
+      void dialog.alert({
+        title: "Limite de cadernos da matéria atingido",
+        message: `O limite de ${LIMITS.notebooksPerSubject.toLocaleString("pt-BR")} cadernos para esta matéria foi atingido.`,
+      });
+      return;
+    }
     const title = (
       await dialog.prompt({
         title: "Nome do novo caderno",

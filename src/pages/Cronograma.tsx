@@ -399,7 +399,13 @@ function Cronograma({
       }));
   };
   const duplicate = (entry: ScheduleEntry) => {
-    if (data.scheduleEntries.length >= LIMITS.scheduleEntries) return;
+    if (data.scheduleEntries.length >= LIMITS.scheduleEntries) {
+      void dialog.alert({
+        title: "Limite de blocos atingido",
+        message: `O limite de ${LIMITS.scheduleEntries} blocos na grade de estudos foi atingido.`,
+      });
+      return;
+    }
     const date = entry.date
       ? localDayKey(addDays(fromKey(entry.date), 1))
       : undefined;

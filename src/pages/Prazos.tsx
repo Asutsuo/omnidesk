@@ -51,13 +51,23 @@ export default function Prazos({ data, mutate }: Props) {
     const form = new FormData(event.currentTarget);
     const subjectId = String(form.get("subjectId") || "") || undefined;
 
-    if (!editing && data.assignments.length >= LIMITS.assignments) return;
+    if (!editing && data.assignments.length >= LIMITS.assignments) {
+      void dialog.alert({
+        title: "Limite de trabalhos atingido",
+        message: `O limite de ${LIMITS.assignments.toLocaleString("pt-BR")} trabalhos foi atingido.`,
+      });
+      return;
+    }
     if (
       !editing &&
       subjectId &&
       data.assignments.filter((item) => item.subjectId === subjectId).length >=
         LIMITS.assignmentsPerSubject
     ) {
+      void dialog.alert({
+        title: "Limite de trabalhos da matéria atingido",
+        message: `O limite de ${LIMITS.assignmentsPerSubject.toLocaleString("pt-BR")} trabalhos para esta matéria foi atingido.`,
+      });
       return;
     }
 
