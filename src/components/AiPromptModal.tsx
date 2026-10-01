@@ -27,6 +27,7 @@ export default function AiPromptModal({
   const [type, setType] = useState<AiPromptType>(initialType);
   const [subject, setSubject] = useState(subjectTitle || "");
   const [moduleTopic, setModuleTopic] = useState("");
+  const [collectionName, setCollectionName] = useState("");
   const [quantity, setQuantity] = useState("5");
   const [attachNotes, setAttachNotes] = useState(true);
   const [checklistMode, setChecklistMode] = useState<"edital" | "cycle">(
@@ -38,6 +39,8 @@ export default function AiPromptModal({
   const cleanSubject =
     subject.trim() || (subjectTitle ? subjectTitle : "Geral");
   const cleanModule = moduleTopic.trim() || "Tópicos Fundamentais";
+  const cleanCollection =
+    collectionName.trim() || moduleTopic.trim() || "Simulado de Estudo";
   const numQty = Math.max(1, parseInt(quantity, 10) || 5);
 
   const attachmentInstruction = attachNotes
@@ -59,7 +62,7 @@ REGRAS CRÍTICAS DE FORMATAÇÃO DO OMNIDESK:
 Exemplo exato do formato esperado:
 
 \`\`\`text
-[COLEÇÃO: Simulado de Estudo]
+[COLEÇÃO: ${cleanCollection}]
 [MATÉRIA: ${cleanSubject}]
 [CATEGORIA: ${cleanModule}]
 
@@ -290,6 +293,17 @@ Exemplo exato do formato esperado:
                 autoFocus
               />
             </label>
+            {type === "questions" && (
+              <label>
+                Coleção de destino
+                <input
+                  value={collectionName}
+                  onChange={(e) => setCollectionName(e.target.value)}
+                  placeholder="Ex.: Princípios Contábeis"
+                  maxLength={100}
+                />
+              </label>
+            )}
             {type !== "checklists" && (
               <label className="ai-qty-field">
                 Quantidade

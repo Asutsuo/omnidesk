@@ -91,9 +91,16 @@ function Questoes({
   >("manual");
   const [formMode, setFormMode] = useState<SimulationMode>("fixacao");
   const [reviewing, setReviewing] = useState<string>();
-  const [selectionCategory, setSelectionCategory] = useState("");
   const [bulkSubject, setBulkSubject] = useState("");
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [importCollectionOverride, setImportCollectionOverride] = useState("");
+  const [importSuccessInfo, setImportSuccessInfo] = useState<{
+    count: number;
+    collection: string;
+    ids: string[];
+  }>();
+  const [builderTitle, setBuilderTitle] = useState("");
+
   const confirmBulk = async (count: number, action: string) =>
     await dialog.confirm({
       title: `${action} ${count} questões selecionadas?`,
@@ -101,32 +108,137 @@ function Questoes({
       danger: /excluir/i.test(action),
       confirmText: action,
     });
-  const collections = [
-    ...new Set(data.questions.map((item) => item.collection).filter(Boolean)),
-  ].sort();
-  const categories = [
-    ...new Set(data.questions.flatMap((item) => item.categories)),
-  ].sort();
-  const questions = useMemo(
+
+  const normalizeCollectionTitle = (title: string) => {
+    return title
+      .trim()
+      .replace(/\s+/g, " ")
+      .split(" ")
+      .map((word) => {
+        if (
+          word.length <= 2 &&
+          /^(de|da|do|das|dos|e|em|na|no|nas|nos|para|por|com)$/i.test(word)
+        ) {
+          return word.toLowerCase();
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(" ");
+  };
+
+  const activeSubjectFilter = fixedSubjectId ?? subjectFilter;
+
+  // Questions strictly within the current view scope (subject or all)
+  const scopedQuestions = useMemo(
     () =>
       data.questions.filter(
-        (item) =>
-          (!fixedSubjectId || item.subjectId === fixedSubjectId) &&
-          (subjectFilter === "all" || item.subjectId === subjectFilter) &&
-          (collection === "all" || item.collection === collection) &&
-          (category === "all" || item.categories.includes(category)) &&
-          `${item.statement} ${item.collection} ${item.categories.join(" ")} ${item.institution}`
-            .toLocaleLowerCase("pt-BR")
-            .includes(search.toLocaleLowerCase("pt-BR")),
+        (item) => !fixedSubjectId || item.subjectId === fixedSubjectId,
       ),
-    [
-      data.questions,
-      fixedSubjectId,
-      subjectFilter,
-      collection,
-      category,
-      search,
-    ],
+    [data.questions, fixedSubjectId],
+  );
+
+  // In global view, further narrow by the subject filter dropdown
+  const contextQuestions = useMemo(
+    () =>
+      scopedQuestions.filter(
+        (item) =>
+          fixedSubjectId
+            ? true
+            : activeSubjectFilter === "all"
+              ? true
+              : activeSubjectFilter === ""
+                ? !item.subjectId
+                : item.subjectId === activeSubjectFilter,
+      ),
+    [scopedQuestions, fixedSubjectId, activeSubjectFilter],
+  );
+
+  // Unique collections for current context, grouped case-insensitively
+  const collections = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const q of contextQuestions) {
+      const col = q.collection?.trim();
+      if (!col) continue;
+      const key = col.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, col);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
+    );
+  }, [contextQuestions]);
+
+  // Unique categories for current context
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const q of contextQuestions) {
+      for (const cat of q.categories) {
+        if (cat.trim()) set.add(cat.trim());
+      }
+    }
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base" }),
+    );
+  }, [contextQuestions]);
+
+  const effectiveCollection = useMemo(
+    () =>
+      collection === "all" ||
+      collections.some(
+        (c) =>
+          c.localeCompare(collection, "pt-BR", { sensitivity: "base" }) === 0,
+      )
+        ? collection
+        : "all",
+    [collection, collections],
+  );
+
+  const effectiveCategory = useMemo(
+    () =>
+      category === "all" ||
+      categories.some(
+        (c) =>
+          c.localeCompare(category, "pt-BR", { sensitivity: "base" }) === 0,
+      )
+        ? category
+        : "all",
+    [category, categories],
+  );
+
+  const questions = useMemo(
+    () =>
+      contextQuestions.filter((item) => {
+        if (
+          effectiveCollection !== "all" &&
+          item.collection.localeCompare(effectiveCollection, "pt-BR", {
+            sensitivity: "base",
+          }) !== 0
+        ) {
+          return false;
+        }
+        if (
+          effectiveCategory !== "all" &&
+          !item.categories.some(
+            (c) =>
+              c.localeCompare(effectiveCategory, "pt-BR", {
+                sensitivity: "base",
+              }) === 0,
+          )
+        ) {
+          return false;
+        }
+        if (search.trim()) {
+          const q = search.toLocaleLowerCase("pt-BR");
+          const haystack =
+            `${item.statement} ${item.collection} ${item.categories.join(" ")} ${item.institution || ""}`.toLocaleLowerCase(
+              "pt-BR",
+            );
+          if (!haystack.includes(q)) return false;
+        }
+        return true;
+      }),
+    [contextQuestions, effectiveCollection, effectiveCategory, search],
   );
   const attempts = data.simulationAttempts.filter(
     (item) =>
@@ -185,7 +297,9 @@ function Questoes({
       id: editing?.id ?? crypto.randomUUID(),
       subjectId:
         fixedSubjectId || String(form.get("subjectId") || "") || undefined,
-      collection: String(form.get("collection") || "Geral").trim() || "Geral",
+      collection: normalizeCollectionTitle(
+        String(form.get("collection") || "Geral").trim() || "Geral",
+      ),
       categories: String(form.get("categories") || "")
         .split(",")
         .map((item) => item.trim())
@@ -247,21 +361,59 @@ function Questoes({
       return;
     }
     const stamp = now();
+    const override = importCollectionOverride.trim()
+      ? normalizeCollectionTitle(importCollectionOverride)
+      : undefined;
+    const newQuestions = preview.questions.map((item) => ({
+      ...item,
+      collection:
+        override || normalizeCollectionTitle(item.collection) || "Geral",
+      id: crypto.randomUUID(),
+      createdAt: stamp,
+      updatedAt: stamp,
+    }));
     mutate((current) => ({
       ...current,
-      questions: [
-        ...preview.questions.map((item) => ({
-          ...item,
-          id: crypto.randomUUID(),
-          createdAt: stamp,
-          updatedAt: stamp,
-        })),
-        ...current.questions,
-      ],
+      questions: [...newQuestions, ...current.questions],
     }));
+    const newIds = newQuestions.map((item) => item.id);
+    setSelected(new Set(newIds));
+    setImportSuccessInfo({
+      count: newQuestions.length,
+      collection: override || newQuestions[0]?.collection || "Geral",
+      ids: newIds,
+    });
     setImportOpen(false);
     setPreview(undefined);
+    setImportCollectionOverride("");
   };
+
+  const startSimulationFromSelection = (
+    customIds?: string[],
+    suggestedTitle?: string,
+  ) => {
+    const ids = customIds ?? Array.from(selected);
+    if (!ids.length) return;
+    if (ids.length > LIMITS.simulationQuestions) {
+      void dialog.alert({
+        title: "Limite de questões excedido",
+        message: `Um simulado pode ter no máximo ${LIMITS.simulationQuestions} questões. Selecionadas: ${ids.length}.`,
+      });
+      return;
+    }
+    setSelected(new Set(ids));
+    const title =
+      suggestedTitle ||
+      (collection !== "all"
+        ? `Simulado - ${collection}`
+        : fixedSubjectId
+          ? `Simulado - ${subjectName(data, fixedSubjectId)}`
+          : "Simulado Personalizado");
+    setBuilderTitle(title);
+    setTab("simulations");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const createSimulation = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const ids = selected.size
@@ -314,6 +466,7 @@ function Questoes({
       ],
     }));
     setSelected(new Set());
+    setBuilderTitle("");
     event.currentTarget.reset();
     setFormMode("fixacao");
   };
@@ -401,20 +554,25 @@ function Questoes({
   };
 
   const submitMasteryEarly = async (attempt: SimulationAttempt) => {
-    const correct = attempt.questions.filter(
-      (item) => attempt.answers[item.id] === item.correctAlternativeId,
-    ).length;
+    const totalQ = attempt.questions.length;
+    const answered = Object.keys(attempt.answers).length;
+    const neededCorrect = Math.ceil(totalQ * (attempt.passingScore / 10));
+
     if (
       !(await dialog.confirm({
-        title: "Encerrar por corte atingido?",
-        message: `Você acertou ${correct} de ${attempt.questions.length} questões com 100% de precisão nas respondidas, atingindo a nota de corte (${attempt.passingScore}). Deseja finalizar com este registro?`,
-        confirmText: "Finalizar por corte",
+        title: "Encerrar simulado por corte?",
+        message: `Você respondeu ${answered} de ${totalQ} questões (mínimo para a meta: ${neededCorrect}). Deseja finalizar e corrigir o simulado agora por sua conta e risco?`,
+        confirmText: "Encerrar e corrigir",
       }))
     )
       return;
+    const correct = attempt.questions.filter(
+      (item) => attempt.answers[item.id] === item.correctAlternativeId,
+    ).length;
     const score = Number(
       ((correct / attempt.questions.length) * 10).toFixed(2),
     );
+    const passed = score >= attempt.passingScore;
     mutate((current) => ({
       ...current,
       simulationAttempts: current.simulationAttempts.map((item) =>
@@ -424,8 +582,8 @@ function Questoes({
               status: "completed",
               completedAt: now(),
               score,
-              passed: true,
-              completionReason: "mastery_cutoff",
+              passed,
+              completionReason: passed ? "mastery_cutoff" : "standard",
             }
           : item,
       ),
@@ -525,38 +683,84 @@ function Questoes({
   }, [currentAttempt, isPaused]);
   const selectVisible = () =>
     setSelected(new Set(questions.map((item) => item.id)));
-  const selectCategoryItems = () =>
-    setSelected(
-      new Set(
-        data.questions
-          .filter(
-            (item) =>
-              item.categories.includes(selectionCategory) &&
-              (!fixedSubjectId || item.subjectId === fixedSubjectId),
-          )
-          .map((item) => item.id),
-      ),
-    );
   const editSelectedCollection = async () => {
+    if (!selected.size) return;
     const value = (
       await dialog.prompt({
-        title: "Nova coleção para as questões selecionadas",
-        placeholder: "Ex.: Simulado ESA, Geral",
+        title: "Alterar coleção das questões selecionadas",
+        message: collections.length
+          ? `Coleções nesta matéria: ${collections.slice(0, 6).join(", ")}${collections.length > 6 ? "..." : ""}`
+          : undefined,
+        placeholder: "Digite o nome da coleção de destino...",
         confirmText: "Salvar",
       })
     )?.trim();
-    if (
-      !value ||
-      !selected.size ||
-      !(await confirmBulk(selected.size, "Editar"))
-    )
-      return;
+    if (!value || !(await confirmBulk(selected.size, "Mover para"))) return;
+    const normalized = normalizeCollectionTitle(value);
     const stamp = now();
     mutate((current) => ({
       ...current,
       questions: current.questions.map((item) =>
         selected.has(item.id)
-          ? { ...item, collection: value.slice(0, 120), updatedAt: stamp }
+          ? {
+              ...item,
+              collection: normalized.slice(0, 120),
+              updatedAt: stamp,
+            }
+          : item,
+      ),
+    }));
+  };
+
+  const normalizeSelectedCollections = async () => {
+    if (!selected.size) return;
+    if (!(await confirmBulk(selected.size, "Padronizar maiúsculas de"))) return;
+    const stamp = now();
+    mutate((current) => ({
+      ...current,
+      questions: current.questions.map((item) =>
+        selected.has(item.id)
+          ? {
+              ...item,
+              collection: normalizeCollectionTitle(item.collection),
+              updatedAt: stamp,
+            }
+          : item,
+      ),
+    }));
+  };
+
+  const normalizeAllSubjectCollections = async () => {
+    const unnormalized = contextQuestions.filter(
+      (q) => q.collection !== normalizeCollectionTitle(q.collection),
+    );
+    if (!unnormalized.length) {
+      void dialog.alert({
+        title: "Coleções padronizadas",
+        message:
+          "Todos os nomes de coleções desta matéria já estão no padrão correto.",
+      });
+      return;
+    }
+    if (
+      !(await dialog.confirm({
+        title: "Padronizar capitalização de coleções?",
+        message: `${unnormalized.length} questões com divergências de maiúsculas/minúsculas serão ajustadas para o padrão Title Case (ex.: “Princípios Contábeis”), unificando coleções duplicadas.`,
+        confirmText: "Padronizar",
+      }))
+    )
+      return;
+    const stamp = now();
+    const ids = new Set(unnormalized.map((q) => q.id));
+    mutate((current) => ({
+      ...current,
+      questions: current.questions.map((item) =>
+        ids.has(item.id)
+          ? {
+              ...item,
+              collection: normalizeCollectionTitle(item.collection),
+              updatedAt: stamp,
+            }
           : item,
       ),
     }));
@@ -671,13 +875,7 @@ function Questoes({
     const neededCorrect = Math.ceil(
       totalQ * (currentAttempt.passingScore / 10),
     );
-    const correctCount = currentAttempt.questions.filter(
-      (item) => currentAttempt.answers[item.id] === item.correctAlternativeId,
-    ).length;
-    const canEarlyExit =
-      answered >= neededCorrect &&
-      correctCount === answered &&
-      answered < totalQ;
+    const canEarlyExit = answered >= neededCorrect && answered < totalQ;
 
     return (
       <main className={`${embedded ? "" : "page "}question-area`}>
@@ -823,9 +1021,9 @@ function Questoes({
                   type="button"
                   className="secondary-button mastery-button"
                   onClick={() => submitMasteryEarly(currentAttempt)}
-                  title="Nota de corte já atingida com 100% de acerto nas respondidas"
+                  title="Encerrar antecipadamente caso já tenha atingido a nota de corte nas questões respondidas"
                 >
-                  <Award size={15} /> Encerrar por corte atingido
+                  <Award size={15} /> Encerrar por corte
                 </button>
               )}
               {questionIndex < currentAttempt.questions.length - 1 ? (
@@ -1037,6 +1235,24 @@ function Questoes({
                   setPreview(undefined);
                 }}
               />
+              <div className="import-override-row">
+                <label>
+                  <span>Coleção de destino (opcional)</span>
+                  <input
+                    value={importCollectionOverride}
+                    onChange={(event) =>
+                      setImportCollectionOverride(event.target.value)
+                    }
+                    placeholder="Forçar todas as questões para esta coleção (ex: Princípios Contábeis)..."
+                    list="import-existing-collections"
+                  />
+                  <datalist id="import-existing-collections">
+                    {collections.map((col) => (
+                      <option key={col} value={col} />
+                    ))}
+                  </datalist>
+                </label>
+              </div>
               <div className="import-actions">
                 <button
                   className="secondary-button"
@@ -1079,8 +1295,8 @@ function Questoes({
                         {index + 1}. {question.statement}
                       </b>
                       <span>
-                        {question.collection} · {question.alternatives.length}{" "}
-                        alternativas
+                        {importCollectionOverride.trim() || question.collection} ·{" "}
+                        {question.alternatives.length} alternativas
                       </span>
                     </article>
                   ))}
@@ -1101,9 +1317,41 @@ function Questoes({
               )}
             </section>
           )}
+          {importSuccessInfo && (
+            <div className="panel import-success-banner">
+              <div className="banner-info">
+                <CheckCircle2 size={18} />
+                <span>
+                  <strong>{importSuccessInfo.count} questões importadas</strong>{" "}
+                  com sucesso na coleção “{importSuccessInfo.collection}”.
+                </span>
+              </div>
+              <div className="banner-actions">
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() =>
+                    startSimulationFromSelection(
+                      importSuccessInfo.ids,
+                      `Simulado - ${importSuccessInfo.collection}`,
+                    )
+                  }
+                >
+                  <Play size={14} /> Montar simulado com estas questões
+                </button>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => setImportSuccessInfo(undefined)}
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          )}
           <section className="question-filters">
             <label className="search-box">
-              <Search />
+              <Search size={16} />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -1115,7 +1363,9 @@ function Questoes({
                 value={subjectFilter}
                 onChange={(event) => setSubjectFilter(event.target.value)}
               >
-                <option value="all">Todas as matérias</option>
+                <option value="all">
+                  Todas as matérias [{data.subjects.length}]
+                </option>
                 <option value="">Geral</option>
                 {data.subjects.map((item) => (
                   <option value={item.id} key={item.id}>
@@ -1125,69 +1375,88 @@ function Questoes({
               </select>
             )}
             <select
-              value={collection}
+              value={effectiveCollection}
               onChange={(event) => setCollection(event.target.value)}
             >
-              <option value="all">Todas as coleções</option>
+              <option value="all">
+                Todas as coleções [{collections.length}]
+              </option>
               {collections.map((item) => (
-                <option key={item}>{item}</option>
+                <option key={item} value={item}>
+                  {item}
+                </option>
               ))}
             </select>
             <select
-              value={category}
+              value={effectiveCategory}
               onChange={(event) => setCategory(event.target.value)}
             >
-              <option value="all">Todas as categorias</option>
+              <option value="all">
+                Todas as categorias [{categories.length}]
+              </option>
               {categories.map((item) => (
-                <option key={item}>{item}</option>
+                <option key={item} value={item}>
+                  {item}
+                </option>
               ))}
             </select>
-          </section>
-          <section className="panel bulk-manager question-bulk">
-            <div className="bulk-manager-head">
-              <div>
-                <strong>Organização em massa</strong>
-                <small>{selected.size} questões selecionadas</small>
-              </div>
-              <button className="secondary-button" onClick={selectVisible}>
-                <CheckCircle2 /> Selecionar visíveis
-              </button>
-              <select
-                value={selectionCategory}
-                onChange={(event) => setSelectionCategory(event.target.value)}
-              >
-                <option value="">Selecionar por categoria</option>
-                {categories.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
+            {questions.length > 0 && (
               <button
+                type="button"
                 className="secondary-button"
-                disabled={!selectionCategory}
-                onClick={selectCategoryItems}
+                onClick={selectVisible}
+                title="Selecionar questões visíveis no filtro atual"
               >
-                Selecionar categoria
+                <CheckCircle2 size={15} /> Selecionar visíveis [{questions.length}]
               </button>
+            )}
+            {collections.length > 1 && (
               <button
-                className="text-button"
-                onClick={() => setSelected(new Set())}
+                type="button"
+                className="secondary-button"
+                onClick={normalizeAllSubjectCollections}
+                title="Padronizar maiúsculas e unificar variações de nomes de coleções"
               >
-                Limpar
+                <Sparkles size={15} /> Padronizar coleções
               </button>
-            </div>
-            {selected.size > 0 && (
-              <div className="bulk-edit-row">
+            )}
+          </section>
+          {selected.size > 0 && (
+            <section className="panel bulk-manager question-bulk">
+              <div className="bulk-manager-head">
+                <div>
+                  <strong>{selected.size} questões selecionadas</strong>
+                  <small>Ações em lote para o banco de questões</small>
+                </div>
                 <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => startSimulationFromSelection()}
+                  title="Criar um simulado com as questões selecionadas"
+                >
+                  <Play size={14} /> Montar simulado ({selected.size})
+                </button>
+                <button
+                  type="button"
                   className="secondary-button"
                   onClick={editSelectedCollection}
                 >
-                  <Pencil /> Editar coleção
+                  <Pencil size={14} /> Mover coleção
                 </button>
                 <button
+                  type="button"
                   className="secondary-button"
                   onClick={editSelectedCategories}
                 >
-                  <Pencil /> Editar categorias
+                  <Pencil size={14} /> Categorias
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={normalizeSelectedCollections}
+                  title="Ajustar maiúsculas/minúsculas para padrão Title Case"
+                >
+                  <Sparkles size={14} /> Padronizar caixa
                 </button>
                 {!fixedSubjectId && (
                   <>
@@ -1204,6 +1473,7 @@ function Questoes({
                       ))}
                     </select>
                     <button
+                      type="button"
                       className="secondary-button"
                       disabled={!bulkSubject}
                       onClick={moveSelectedSubject}
@@ -1213,15 +1483,23 @@ function Questoes({
                   </>
                 )}
                 <button
+                  type="button"
                   className="secondary-button danger-outline"
                   onClick={deleteSelected}
                 >
-                  <Trash2 /> Excluir selecionadas
+                  <Trash2 size={14} /> Excluir
+                </button>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => setSelected(new Set())}
+                >
+                  Desmarcar todas
                 </button>
               </div>
-            )}
-          </section>
-          <div className="question-list">
+            </section>
+          )}
+          <div className={`question-list ${selected.size > 0 ? "has-selection" : ""}`}>
             {questions.map((question) => (
               <article className="panel question-card" key={question.id}>
                 <button
@@ -1279,81 +1557,123 @@ function Questoes({
             className="panel simulation-builder"
             onSubmit={createSimulation}
           >
-            <div>
-              <span className="eyebrow">NOVO MODELO</span>
-              <h2>Monte um simulado</h2>
-              <p>
-                {selected.size
-                  ? `${selected.size} questões selecionadas no banco`
-                  : `${questions.length} questões dos filtros atuais`}
-              </p>
-            </div>
-            <label>
-              Título
-              <input
-                name="title"
-                required
-                placeholder="Ex.: Simulado ESA 2014"
-              />
-            </label>
-            <label>
-              Modo
-              <select
-                name="mode"
-                value={formMode}
-                onChange={(e) => setFormMode(e.target.value as SimulationMode)}
+            <div className="simulation-builder-header">
+              <div>
+                <span className="eyebrow">NOVO MODELO</span>
+                <h2>Monte um simulado</h2>
+              </div>
+              <div
+                className={`simulation-scope-badge ${selected.size > 0 ? "selected" : ""}`}
               >
-                <option value="fixacao">Fixação (tempo progressivo)</option>
-                <option value="cronometrado">
-                  Cronometrado (tempo regressivo)
-                </option>
-              </select>
-            </label>
-            {formMode === "cronometrado" && (
-              <label>
-                Tempo limite (minutos)
+                {selected.size > 0 ? (
+                  <>
+                    <span>
+                      Usando <strong>{selected.size} questões selecionadas</strong> no acervo
+                    </span>
+                    <button
+                      type="button"
+                      className="scope-action-btn"
+                      onClick={() => setSelected(new Set())}
+                    >
+                      Limpar seleção
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span>
+                      Usando <strong>{questions.length} questões</strong> do filtro atual [{effectiveCollection === "all" ? "Todas as coleções" : effectiveCollection}]
+                    </span>
+                    <button
+                      type="button"
+                      className="scope-action-btn"
+                      onClick={() => setTab("bank")}
+                    >
+                      Selecionar questões no acervo
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="simulation-builder-fields">
+              <label className="field-title">
+                Título
                 <input
-                  name="timeLimitMinutes"
-                  type="number"
-                  min="1"
-                  max="720"
-                  defaultValue={Math.max(
-                    5,
-                    (selected.size || questions.length) * 3,
-                  )}
+                  name="title"
                   required
+                  value={builderTitle}
+                  onChange={(e) => setBuilderTitle(e.target.value)}
+                  placeholder="Ex.: Simulado ESA 2014"
                 />
               </label>
-            )}
-            <label>
-              Nota mínima (0–10)
-              <input
-                name="passingScore"
-                type="number"
-                min="0"
-                max="10"
-                step="0.1"
-                defaultValue="5"
-              />
-            </label>
-            <label className="check-label">
-              <input name="shuffleQuestions" type="checkbox" defaultChecked />
-              <Shuffle /> Embaralhar questões
-            </label>
-            <label className="check-label">
-              <input
-                name="shuffleAlternatives"
-                type="checkbox"
-                defaultChecked
-              />
-              <Shuffle /> Embaralhar alternativas
-            </label>
-            <button
-              className="primary-button"
-              disabled={!selected.size && !questions.length}
-            >
-              Salvar modelo
-            </button>
+              <label className="field-mode">
+                Modo
+                <select
+                  name="mode"
+                  value={formMode}
+                  onChange={(e) => setFormMode(e.target.value as SimulationMode)}
+                >
+                  <option value="fixacao">Fixação (tempo progressivo)</option>
+                  <option value="cronometrado">
+                    Cronometrado (tempo regressivo)
+                  </option>
+                </select>
+              </label>
+              {formMode === "cronometrado" && (
+                <label className="field-timelimit">
+                  Tempo limite (minutos)
+                  <input
+                    name="timeLimitMinutes"
+                    type="number"
+                    min="1"
+                    max="720"
+                    defaultValue={Math.max(
+                      5,
+                      (selected.size || questions.length) * 3,
+                    )}
+                    required
+                  />
+                </label>
+              )}
+              <label className="field-score">
+                Nota mínima (0–10)
+                <input
+                  name="passingScore"
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  defaultValue="5"
+                />
+              </label>
+            </div>
+
+            <div className="simulation-builder-actions">
+              <div className="simulation-builder-checks">
+                <label className="check-label">
+                  <input
+                    name="shuffleQuestions"
+                    type="checkbox"
+                    defaultChecked
+                  />
+                  <Shuffle size={14} /> Embaralhar questões
+                </label>
+                <label className="check-label">
+                  <input
+                    name="shuffleAlternatives"
+                    type="checkbox"
+                    defaultChecked
+                  />
+                  <Shuffle size={14} /> Embaralhar alternativas
+                </label>
+              </div>
+              <button
+                className="primary-button"
+                disabled={!selected.size && !questions.length}
+              >
+                Salvar modelo
+              </button>
+            </div>
           </form>
           <div className="simulation-list">
             {visibleSimulations.map((simulation) => {

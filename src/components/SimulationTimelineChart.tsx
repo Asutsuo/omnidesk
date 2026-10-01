@@ -135,28 +135,16 @@ export default function SimulationTimelineChart({ attempt }: Props) {
 
           {/* Average reference line */}
           {avgTime > 0 && (
-            <g>
-              <line
-                x1={paddingLeft}
-                y1={avgY}
-                x2={width - paddingRight}
-                y2={avgY}
-                stroke="var(--detail-color)"
-                strokeWidth="1.5"
-                strokeDasharray="4 4"
-                opacity="0.85"
-              />
-              <text
-                x={width - paddingRight}
-                y={avgY - 4}
-                textAnchor="end"
-                fill="var(--detail-color)"
-                fontSize="9"
-                fontWeight="600"
-              >
-                Média {formatTimer(avgTime)}
-              </text>
-            </g>
+            <line
+              x1={paddingLeft}
+              y1={avgY}
+              x2={width - paddingRight}
+              y2={avgY}
+              stroke="var(--detail-color)"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+              opacity="0.85"
+            />
           )}
 
           {/* Gradient area underneath */}

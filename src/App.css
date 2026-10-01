@@ -3653,12 +3653,32 @@
   display: grid;
   grid-template-columns: minmax(210px, 1.5fr) repeat(3, minmax(130px, 0.7fr));
   gap: 9px;
+  align-items: center;
 }
 .library-filters .search-box {
   display: flex;
+  align-items: center;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 10px;
+}
+.library-filters .search-box input {
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  outline: 0;
+  font-size: 13px;
+  color: var(--text);
 }
 .library-filters select {
-  font-size: 10px;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 28px 0 12px;
+  font-size: 12px;
+  border-radius: 10px;
 }
 .resource-grid {
   display: grid;
@@ -3976,12 +3996,122 @@
   justify-self: start;
 }
 .question-filters {
-  display: grid;
-  grid-template-columns: 1.5fr repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
 }
 .question-filters .search-box {
+  flex: 2 1 240px;
+  min-width: 220px;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 10px;
   display: flex;
+  align-items: center;
+}
+.question-filters .search-box input {
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  outline: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.question-filters select {
+  flex: 1 1 200px;
+  min-width: 190px;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 32px 0 14px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+.question-filters .secondary-button {
+  flex-shrink: 0;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  border-radius: 10px;
+}
+.import-override-row {
+  margin: 10px 0 14px;
+}
+.import-override-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.import-override-row input {
+  padding: 9px 13px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+}
+.import-success-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  background: color-mix(in srgb, var(--success) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  border-radius: var(--radius);
+}
+.import-success-banner .banner-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.import-success-banner .banner-info svg {
+  color: var(--success);
+  flex-shrink: 0;
+}
+.import-success-banner .banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.simulation-scope-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--detail-color) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--detail-color) 25%, transparent);
+  color: var(--text);
+}
+.simulation-scope-badge.selected {
+  background: color-mix(in srgb, var(--success) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--success) 35%, transparent);
+}
+.simulation-scope-badge .scope-action-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--detail-color);
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+.simulation-scope-badge.selected .scope-action-btn {
+  color: var(--success);
 }
 .question-list,
 .simulation-list,
@@ -3992,7 +4122,7 @@
 .question-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
+  align-items: center;
   gap: 14px;
   padding: 18px;
 }
@@ -4014,21 +4144,31 @@
   place-items: center;
   width: 22px;
   height: 22px;
-  border: 1px solid var(--border-color);
+  border: 1.5px solid color-mix(in srgb, var(--item-color) 45%, var(--border-color));
   border-radius: 6px;
-  background: var(--surface);
-  color: var(--on-primary);
+  background: var(--surface-muted);
+  color: #fff;
   cursor: pointer;
+  align-self: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.question-select:hover {
+  border-color: var(--detail-color);
+  background: color-mix(in srgb, var(--detail-color) 14%, var(--surface-muted));
 }
 .question-select.active {
   border-color: var(--success);
   background: var(--success);
+  color: #fff;
 }
 .question-select svg {
   width: 14px;
+  height: 14px;
 }
 .question-actions {
   display: flex;
+  align-self: center;
 }
 .question-actions button {
   display: grid;
@@ -4045,10 +4185,94 @@
   width: 14px;
 }
 .simulation-builder {
-  display: grid;
-  grid-template-columns: 1.2fr 1.2fr 0.65fr 1fr 1fr auto;
-  align-items: end;
-  gap: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+}
+.simulation-builder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+.simulation-builder-header h2 {
+  margin: 2px 0 0;
+  font-family: "Fraunces";
+  font-size: 20px;
+}
+.simulation-builder-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.simulation-builder-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.simulation-builder-fields .field-title {
+  flex: 2 1 240px;
+}
+.simulation-builder-fields .field-mode {
+  flex: 1.2 1 180px;
+}
+.simulation-builder-fields .field-timelimit {
+  flex: 1 1 140px;
+}
+.simulation-builder-fields .field-score {
+  flex: 0.8 1 110px;
+}
+.simulation-builder-fields input,
+.simulation-builder-fields select {
+  height: 42px;
+  box-sizing: border-box;
+  font-size: 13px;
+  border-radius: 9px;
+}
+.simulation-builder-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-top: 4px;
+}
+.simulation-builder-checks {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.simulation-builder-checks .check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+  padding: 0;
+  margin: 0;
+}
+.simulation-builder-checks .check-label input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--detail-color);
+}
+.simulation-builder-actions .primary-button {
+  height: 42px;
+  padding: 0 22px;
+  border-radius: 10px;
 }
 .check-label {
   display: flex !important;
@@ -4242,15 +4466,6 @@
   .question-form {
     grid-template-columns: 1fr 1fr;
   }
-  .simulation-builder {
-    grid-template-columns: 1fr 1fr 1fr;
-  }
-  .simulation-builder > div {
-    grid-column: 1/-1;
-  }
-  .question-filters {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 @media (max-width: 650px) {
   .question-tabs {
@@ -4265,15 +4480,22 @@
     flex-direction: column;
   }
   .question-form,
-  .question-filters,
-  .simulation-builder,
   .simulation-metric-grid,
   .category-metrics {
     grid-template-columns: 1fr;
   }
-  .question-form .wide,
-  .simulation-builder > div {
+  .question-form .wide {
     grid-column: auto;
+  }
+  .simulation-builder-fields label {
+    flex: 1 1 100%;
+  }
+  .simulation-builder-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .simulation-builder-actions .primary-button {
+    width: 100%;
   }
   .simulation-card {
     align-items: flex-start;
@@ -5473,6 +5695,9 @@
   margin-bottom: 16px;
 }
 .checklist-item {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.checklist-item.is-organizing {
   grid-template-columns: auto auto minmax(0, 1fr) minmax(105px, 150px) auto;
 }
 .checklist-item.bulk-selected {
@@ -5498,6 +5723,9 @@
     width: 100%;
   }
   .checklist-item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .checklist-item.is-organizing {
     grid-template-columns: auto auto minmax(0, 1fr) auto;
   }
   .checklist-move-select {

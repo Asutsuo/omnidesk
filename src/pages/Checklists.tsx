@@ -67,6 +67,7 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [selectionSection, setSelectionSection] = useState("all");
   const [targetSection, setTargetSection] = useState("");
+  const [bulkMode, setBulkMode] = useState(false);
   const lists = useMemo(
     () =>
       data.checklists
@@ -612,6 +613,8 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
     setSelectedItems(new Set());
   };
 
+  const isOrganizing = bulkMode || selectedItems.size > 0;
+
   const renderItems = (sectionId?: string) =>
     !open
       ? null
@@ -623,23 +626,25 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
           .sort((a, b) => a.order - b.order)
           .map((item) => (
             <div
-              className={`checklist-item ${item.completed ? "completed" : ""} ${selectedItems.has(item.id) ? "bulk-selected" : ""}`}
+              className={`checklist-item ${item.completed ? "completed" : ""} ${selectedItems.has(item.id) ? "bulk-selected" : ""} ${isOrganizing ? "is-organizing" : ""}`}
               key={item.id}
             >
-              <input
-                className="bulk-check"
-                type="checkbox"
-                checked={selectedItems.has(item.id)}
-                onChange={() =>
-                  setSelectedItems((current) => {
-                    const next = new Set(current);
-                    if (next.has(item.id)) next.delete(item.id);
-                    else next.add(item.id);
-                    return next;
-                  })
-                }
-                aria-label="Selecionar item"
-              />
+              {isOrganizing && (
+                <input
+                  className="bulk-check"
+                  type="checkbox"
+                  checked={selectedItems.has(item.id)}
+                  onChange={() =>
+                    setSelectedItems((current) => {
+                      const next = new Set(current);
+                      if (next.has(item.id)) next.delete(item.id);
+                      else next.add(item.id);
+                      return next;
+                    })
+                  }
+                  aria-label="Selecionar item"
+                />
+              )}
               <button
                 className="checklist-check"
                 onClick={() => toggle(item.id)}
@@ -653,22 +658,24 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
               >
                 {item.text}
               </button>
-              <select
-                className="checklist-move-select"
-                value={item.sectionId ?? ""}
-                onChange={(event) => moveToSection(item, event.target.value)}
-                aria-label="Mover para seção"
-              >
-                <option value="">Itens gerais</option>
-                {data.checklistSections
-                  .filter((section) => section.checklistId === open.id)
-                  .sort((a, b) => a.order - b.order)
-                  .map((section) => (
-                    <option value={section.id} key={section.id}>
-                      {section.title}
-                    </option>
-                  ))}
-              </select>
+              {isOrganizing && (
+                <select
+                  className="checklist-move-select"
+                  value={item.sectionId ?? ""}
+                  onChange={(event) => moveToSection(item, event.target.value)}
+                  aria-label="Mover para seção"
+                >
+                  <option value="">Itens gerais</option>
+                  {data.checklistSections
+                    .filter((section) => section.checklistId === open.id)
+                    .sort((a, b) => a.order - b.order)
+                    .map((section) => (
+                      <option value={section.id} key={section.id}>
+                        {section.title}
+                      </option>
+                    ))}
+                </select>
+              )}
               <div className="checklist-item-actions">
                 <button
                   onClick={() => moveItem(item, -1)}
@@ -721,6 +728,20 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
             </p>
           </div>
           <div className="checklist-editor-actions">
+            <button
+              className={`secondary-button ${isOrganizing ? "active" : ""}`}
+              onClick={() => {
+                if (isOrganizing) {
+                  setBulkMode(false);
+                  setSelectedItems(new Set());
+                } else {
+                  setBulkMode(true);
+                }
+              }}
+              title="Organizar e mover itens em lote"
+            >
+              <ListChecks size={16} /> {isOrganizing ? "Sair da organização" : "Organizar em lote"}
+            </button>
             {done > 0 && (
               <button className="secondary-button" onClick={clearCompleted}>
                 <Check size={16} /> Limpar concluídos
@@ -752,53 +773,18 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
             value={items.length ? (done / items.length) * 100 : 0}
           />
         </div>
-        <section className="panel bulk-manager checklist-bulk">
-          <div className="bulk-manager-head">
-            <div>
-              <strong>Gerenciar itens</strong>
-              <small>{selectedItems.size} selecionados</small>
-            </div>
-            <select
-              value={selectionSection}
-              onChange={(event) => setSelectionSection(event.target.value)}
-            >
-              <option value="all">Todos os itens</option>
-              <option value="root">Itens gerais</option>
-              {sections.map((section) => (
-                <option value={section.id} key={section.id}>
-                  {section.title}
-                </option>
-              ))}
-            </select>
-            <button className="secondary-button" onClick={selectChecklistItems}>
-              <CheckSquare2 /> Selecionar
-            </button>
-            <button
-              className="text-button"
-              onClick={() => setSelectedItems(new Set())}
-            >
-              Limpar
-            </button>
-          </div>
-          {selectedItems.size > 0 && (
-            <div className="bulk-edit-row">
-              <button
-                className="secondary-button"
-                onClick={() => setSelectedStatus(true)}
-              >
-                Concluir
-              </button>
-              <button
-                className="secondary-button"
-                onClick={() => setSelectedStatus(false)}
-              >
-                Reabrir
-              </button>
+        {isOrganizing && (
+          <section className="panel bulk-manager checklist-bulk">
+            <div className="bulk-manager-head">
+              <div>
+                <strong>Gerenciar itens</strong>
+                <small>{selectedItems.size} selecionados</small>
+              </div>
               <select
-                value={targetSection}
-                onChange={(event) => setTargetSection(event.target.value)}
+                value={selectionSection}
+                onChange={(event) => setSelectionSection(event.target.value)}
               >
-                <option value="">Mover para...</option>
+                <option value="all">Todos os itens</option>
                 <option value="root">Itens gerais</option>
                 {sections.map((section) => (
                   <option value={section.id} key={section.id}>
@@ -806,22 +792,59 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
                   </option>
                 ))}
               </select>
-              <button
-                className="secondary-button"
-                disabled={!targetSection}
-                onClick={moveSelectedItems}
-              >
-                Mover
+              <button className="secondary-button" onClick={selectChecklistItems}>
+                <CheckSquare2 /> Selecionar
               </button>
               <button
-                className="secondary-button danger-outline"
-                onClick={deleteSelectedItems}
+                className="text-button"
+                onClick={() => setSelectedItems(new Set())}
               >
-                <Trash2 /> Excluir selecionados
+                Limpar
               </button>
             </div>
-          )}
-        </section>
+            {selectedItems.size > 0 && (
+              <div className="bulk-edit-row">
+                <button
+                  className="secondary-button"
+                  onClick={() => setSelectedStatus(true)}
+                >
+                  Concluir
+                </button>
+                <button
+                  className="secondary-button"
+                  onClick={() => setSelectedStatus(false)}
+                >
+                  Reabrir
+                </button>
+                <select
+                  value={targetSection}
+                  onChange={(event) => setTargetSection(event.target.value)}
+                >
+                  <option value="">Mover para...</option>
+                  <option value="root">Itens gerais</option>
+                  {sections.map((section) => (
+                    <option value={section.id} key={section.id}>
+                      {section.title}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="secondary-button"
+                  disabled={!targetSection}
+                  onClick={moveSelectedItems}
+                >
+                  Mover
+                </button>
+                <button
+                  className="secondary-button danger-outline"
+                  onClick={deleteSelectedItems}
+                >
+                  <Trash2 /> Excluir selecionados
+                </button>
+              </div>
+            )}
+          </section>
+        )}
         <section className="checklist-group ungrouped">
           <div className="checklist-group-title">
             <h3>Itens gerais</h3>
