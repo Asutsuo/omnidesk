@@ -15,9 +15,14 @@ export default function SimulationTimelineChart({ attempt }: Props) {
   const times = questions.map((q) => attempt.questionTimeSeconds?.[q.id] || 0);
   const maxTime = Math.max(15, ...times);
 
-  // Compute average of non-excluded times
+  // Compute average of non-excluded times (only answered or timed questions)
   const validIndices = questions
-    .map((q, idx) => (!attempt.excludedQuestionTimes?.[q.id] ? idx : -1))
+    .map((q, idx) => {
+      const hasAnswer = Boolean(attempt.answers[q.id]);
+      const hasTime = (attempt.questionTimeSeconds?.[q.id] || 0) > 0;
+      const isExcluded = Boolean(attempt.excludedQuestionTimes?.[q.id]);
+      return (hasAnswer || hasTime) && !isExcluded ? idx : -1;
+    })
     .filter((idx) => idx !== -1);
 
   const avgTime = validIndices.length

@@ -140,15 +140,14 @@ function Questoes({
   // In global view, further narrow by the subject filter dropdown
   const contextQuestions = useMemo(
     () =>
-      scopedQuestions.filter(
-        (item) =>
-          fixedSubjectId
+      scopedQuestions.filter((item) =>
+        fixedSubjectId
+          ? true
+          : activeSubjectFilter === "all"
             ? true
-            : activeSubjectFilter === "all"
-              ? true
-              : activeSubjectFilter === ""
-                ? !item.subjectId
-                : item.subjectId === activeSubjectFilter,
+            : activeSubjectFilter === ""
+              ? !item.subjectId
+              : item.subjectId === activeSubjectFilter,
       ),
     [scopedQuestions, fixedSubjectId, activeSubjectFilter],
   );
@@ -556,12 +555,12 @@ function Questoes({
   const submitMasteryEarly = async (attempt: SimulationAttempt) => {
     const totalQ = attempt.questions.length;
     const answered = Object.keys(attempt.answers).length;
-    const neededCorrect = Math.ceil(totalQ * (attempt.passingScore / 10));
+    if (!answered) return;
 
     if (
       !(await dialog.confirm({
-        title: "Encerrar simulado por corte?",
-        message: `Você respondeu ${answered} de ${totalQ} questões (mínimo para a meta: ${neededCorrect}). Deseja finalizar e corrigir o simulado agora por sua conta e risco?`,
+        title: "Encerrar simulado por corte atingido?",
+        message: `Você respondeu ${answered} de ${totalQ} questões. No modo Fixação, sua nota será calculada com base no seu aproveitamento nas questões respondidas (meta: ${attempt.passingScore.toLocaleString("pt-BR")}). Deseja finalizar agora?`,
         confirmText: "Encerrar e corrigir",
       }))
     )
@@ -569,9 +568,7 @@ function Questoes({
     const correct = attempt.questions.filter(
       (item) => attempt.answers[item.id] === item.correctAlternativeId,
     ).length;
-    const score = Number(
-      ((correct / attempt.questions.length) * 10).toFixed(2),
-    );
+    const score = Number(((correct / answered) * 10).toFixed(2));
     const passed = score >= attempt.passingScore;
     mutate((current) => ({
       ...current,
@@ -875,7 +872,8 @@ function Questoes({
     const neededCorrect = Math.ceil(
       totalQ * (currentAttempt.passingScore / 10),
     );
-    const canEarlyExit = answered >= neededCorrect && answered < totalQ;
+    const canEarlyExit =
+      !isCronometrado && answered >= neededCorrect && answered < totalQ;
 
     return (
       <main className={`${embedded ? "" : "page "}question-area`}>
@@ -1295,8 +1293,8 @@ function Questoes({
                         {index + 1}. {question.statement}
                       </b>
                       <span>
-                        {importCollectionOverride.trim() || question.collection} ·{" "}
-                        {question.alternatives.length} alternativas
+                        {importCollectionOverride.trim() || question.collection}{" "}
+                        · {question.alternatives.length} alternativas
                       </span>
                     </article>
                   ))}
@@ -1407,7 +1405,8 @@ function Questoes({
                 onClick={selectVisible}
                 title="Selecionar questões visíveis no filtro atual"
               >
-                <CheckCircle2 size={15} /> Selecionar visíveis [{questions.length}]
+                <CheckCircle2 size={15} /> Selecionar visíveis [
+                {questions.length}]
               </button>
             )}
             {collections.length > 1 && (
@@ -1499,7 +1498,9 @@ function Questoes({
               </div>
             </section>
           )}
-          <div className={`question-list ${selected.size > 0 ? "has-selection" : ""}`}>
+          <div
+            className={`question-list ${selected.size > 0 ? "has-selection" : ""}`}
+          >
             {questions.map((question) => (
               <article className="panel question-card" key={question.id}>
                 <button
@@ -1568,7 +1569,9 @@ function Questoes({
                 {selected.size > 0 ? (
                   <>
                     <span>
-                      Usando <strong>{selected.size} questões selecionadas</strong> no acervo
+                      Usando{" "}
+                      <strong>{selected.size} questões selecionadas</strong> no
+                      acervo
                     </span>
                     <button
                       type="button"
@@ -1581,7 +1584,12 @@ function Questoes({
                 ) : (
                   <>
                     <span>
-                      Usando <strong>{questions.length} questões</strong> do filtro atual [{effectiveCollection === "all" ? "Todas as coleções" : effectiveCollection}]
+                      Usando <strong>{questions.length} questões</strong> do
+                      filtro atual [
+                      {effectiveCollection === "all"
+                        ? "Todas as coleções"
+                        : effectiveCollection}
+                      ]
                     </span>
                     <button
                       type="button"
@@ -1611,7 +1619,9 @@ function Questoes({
                 <select
                   name="mode"
                   value={formMode}
-                  onChange={(e) => setFormMode(e.target.value as SimulationMode)}
+                  onChange={(e) =>
+                    setFormMode(e.target.value as SimulationMode)
+                  }
                 >
                   <option value="fixacao">Fixação (tempo progressivo)</option>
                   <option value="cronometrado">
