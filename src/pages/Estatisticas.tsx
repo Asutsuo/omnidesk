@@ -265,21 +265,36 @@ function Estatisticas({ data }: { data: AppData }) {
       )
       .sort((a, b) => {
         if (pacingSort === "slowest") return b.avgSeconds - a.avgSeconds;
-        if (pacingSort === "fastest") return a.avgSeconds - b.avgSeconds;
+        if (pacingSort === "fastest") {
+          // Itens sem tempo registrado (0s) ficam no final ao ordenar por mais rápidas
+          if (a.avgSeconds === 0 && b.avgSeconds > 0) return 1;
+          if (b.avgSeconds === 0 && a.avgSeconds > 0) return -1;
+          return a.avgSeconds - b.avgSeconds;
+        }
         if (pacingSort === "accuracy") return b.accuracy - a.accuracy;
         return b.totalQuestions - a.totalQuestions;
       });
   }, [subjectPacing, pacingSearch, pacingSort]);
 
-  const slowestSubject = useMemo(() => {
-    if (!subjectPacing.length) return null;
-    return [...subjectPacing].sort((a, b) => b.avgSeconds - a.avgSeconds)[0];
+  const subjectsWithValidPacing = useMemo(() => {
+    return subjectPacing.filter(
+      (item) => item.seconds > 0 && item.avgSeconds > 0,
+    );
   }, [subjectPacing]);
 
+  const slowestSubject = useMemo(() => {
+    if (!subjectsWithValidPacing.length) return null;
+    return [...subjectsWithValidPacing].sort(
+      (a, b) => b.avgSeconds - a.avgSeconds,
+    )[0];
+  }, [subjectsWithValidPacing]);
+
   const fastestSubject = useMemo(() => {
-    if (!subjectPacing.length) return null;
-    return [...subjectPacing].sort((a, b) => a.avgSeconds - b.avgSeconds)[0];
-  }, [subjectPacing]);
+    if (!subjectsWithValidPacing.length) return null;
+    return [...subjectsWithValidPacing].sort(
+      (a, b) => a.avgSeconds - b.avgSeconds,
+    )[0];
+  }, [subjectsWithValidPacing]);
 
   const PAGE_SIZE = 7;
   const [pacingPage, setPacingPage] = useState(1);
@@ -701,8 +716,16 @@ function Estatisticas({ data }: { data: AppData }) {
                         </span>
                       </div>
                       <div className="pacing-col-time">
-                        <strong>{formatTimer(item.avgSeconds)}</strong>
-                        <span className="pacing-unit"> / q</span>
+                        {item.avgSeconds > 0 ? (
+                          <>
+                            <strong>{formatTimer(item.avgSeconds)}</strong>
+                            <span className="pacing-unit"> / q</span>
+                          </>
+                        ) : (
+                          <strong title="Sem telemetria de tempo registrada">
+                            —
+                          </strong>
+                        )}
                       </div>
                       <div className="pacing-col-questions">
                         <small>

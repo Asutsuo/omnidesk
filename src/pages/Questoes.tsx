@@ -887,13 +887,13 @@ function Questoes({
               </span>
               <h2>{currentAttempt.title}</h2>
               <div className="attempt-meta-line">
-                <small>
+                <span>
                   {answered} de {currentAttempt.questions.length} respondidas
-                </small>
+                </span>
                 <span className="meta-separator">·</span>
-                <small>
+                <span>
                   Nesta questão: <strong>{formatTimer(currentQTime)}</strong>
-                </small>
+                </span>
               </div>
             </div>
             <div className="attempt-head-actions">

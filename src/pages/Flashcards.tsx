@@ -53,6 +53,9 @@ function Flashcards({
   const dialog = useDialog();
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [animating, setAnimating] = useState<
+    "left" | "right" | "entering" | null
+  >(null);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [preview, setPreview] = useState<FlashcardParseResult | undefined>();
@@ -72,9 +75,17 @@ function Flashcards({
       ? cards
       : cards.filter((item) => (item.deck || "Geral") === deck);
   const card = visible[index % Math.max(visible.length, 1)];
-  const next = () => {
-    if (visible.length) setIndex((value) => (value + 1) % visible.length);
-    setFlipped(false);
+  const next = (direction: "left" | "right" = "left") => {
+    if (animating) return;
+    setAnimating(direction);
+    setTimeout(() => {
+      if (visible.length) setIndex((value) => (value + 1) % visible.length);
+      setFlipped(false);
+      setAnimating("entering");
+      setTimeout(() => {
+        setAnimating(null);
+      }, 220);
+    }, 220);
   };
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -412,8 +423,19 @@ function Flashcards({
       {card ? (
         <section className="study-area">
           <button
-            className={`flashcard ${flipped ? "flipped" : ""}`}
-            onClick={() => setFlipped(!flipped)}
+            type="button"
+            className={`flashcard ${flipped ? "flipped" : ""} ${
+              animating === "left"
+                ? "discarding-left"
+                : animating === "right"
+                  ? "discarding-right"
+                  : animating === "entering"
+                    ? "entering"
+                    : ""
+            }`}
+            onClick={() => {
+              if (!animating) setFlipped(!flipped);
+            }}
           >
             <span className="eyebrow">
               {flipped
@@ -443,14 +465,19 @@ function Flashcards({
             >
               <Trash2 /> Excluir
             </button>
-            <button className="secondary-button" onClick={next}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => next("left")}
+            >
               Ainda estudando
             </button>
             <button
+              type="button"
               className="primary-button"
               onClick={() => {
                 onToggleMastered(card.id);
-                next();
+                next("right");
               }}
             >
               <CheckCircle2 /> {card.mastered ? "Revisar novamente" : "Já sei"}

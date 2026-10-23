@@ -5,6 +5,7 @@ import {
   ArrowUp,
   Check,
   ChevronDown,
+  Copy,
   Edit3,
   Eye,
   LayoutPanelTop,
@@ -58,6 +59,32 @@ function Anotacoes({
   const [editingId, setEditingId] = useState<string>();
   const [showSlides, setShowSlides] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyNoteText = async (note: QuickNote) => {
+    const hasRealTitle =
+      note.title && note.title.trim() && note.title !== "Nova anotação";
+    const textToCopy =
+      hasRealTitle && note.content
+        ? `${note.title}\n\n${note.content}`.trim()
+        : note.content || note.title || "";
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = textToCopy;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+
+    setCopiedId(note.id);
+    setTimeout(() => {
+      setCopiedId((current) => (current === note.id ? null : current));
+    }, 2000);
+  };
   const groupId = data.noteWorkspace.selectedGroupId;
   const favoritesSelected = groupId === FAVORITES_ID;
   const activeGroup = data.noteGroups.find((group) => group.id === groupId);
@@ -749,6 +776,21 @@ function Anotacoes({
                     }}
                   >
                     <LayoutPanelTop />
+                  </button>
+                  <button
+                    className={copiedId === note.id ? "selected favorite" : ""}
+                    title={
+                      copiedId === note.id
+                        ? "Texto copiado!"
+                        : "Copiar texto da anotação"
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void copyNoteText(note);
+                    }}
+                    aria-label="Copiar texto da anotação"
+                  >
+                    {copiedId === note.id ? <Check /> : <Copy />}
                   </button>
                   <button
                     title={editing ? "Visualizar" : "Editar Markdown"}

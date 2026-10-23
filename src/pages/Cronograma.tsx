@@ -1114,23 +1114,30 @@ function Cronograma({
                 : formatRange(weekDates)}
             </h2>
           </div>
-          <div>
+          <div className="schedule-agenda-actions">
             <button
-              className="text-button"
+              type="button"
+              className="text-button schedule-action-btn"
               disabled={!selectedEntries.length}
               onClick={copyDay}
+              title="Copiar programação do dia selecionado"
             >
-              <Copy /> Copiar dia
+              <Copy size={13} />
+              <span>Copiar dia</span>
             </button>
             <button
-              className="text-button danger"
+              type="button"
+              className="text-button danger schedule-action-btn"
               disabled={!selectedEditable.length}
               onClick={clearDay}
+              title="Limpar todos os blocos do dia selecionado"
             >
-              Limpar dia
+              <Trash2 size={13} />
+              <span>Limpar dia</span>
             </button>
             <button
-              className="text-button danger"
+              type="button"
+              className="text-button danger schedule-action-btn"
               disabled={
                 !entries.some(
                   (entry) =>
@@ -1141,10 +1148,16 @@ function Cronograma({
                 )
               }
               onClick={clearWeek}
+              title="Limpar blocos únicos desta semana"
             >
-              Limpar blocos únicos
+              <RotateCcw size={13} />
+              <span>Limpar blocos únicos</span>
             </button>
-            <button className="primary-button" onClick={() => openNew()}>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => openNew()}
+            >
               <Plus /> Novo bloco
             </button>
           </div>
