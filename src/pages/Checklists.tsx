@@ -24,6 +24,7 @@ import {
 } from "../data";
 import { useDialog } from "../components/DialogModal";
 import AiPromptModal from "../components/AiPromptModal";
+import AutoScrollText from "../components/AutoScrollText";
 
 type Props = {
   data: AppData;
@@ -1029,14 +1030,14 @@ function Checklists({ data, mutate, fixedSubjectId }: Props) {
             ? Math.round((done / items.length) * 100)
             : 0;
           return (
-            <article className="checklist-card" key={list.id}>
+            <article className="checklist-card hover-scroll-parent" key={list.id}>
               <button onClick={() => setOpenId(list.id)}>
                 <span className="checklist-card-icon">
                   <ListChecks />
                 </span>
                 <div>
                   <small>{subjectName(data, list.subjectId)}</small>
-                  <h3>{list.title}</h3>
+                  <AutoScrollText as="h3" text={list.title} />
                   <p>
                     {items.length
                       ? `${done} de ${items.length} itens`

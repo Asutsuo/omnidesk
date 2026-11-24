@@ -27,6 +27,7 @@ import TimerPanel from "../components/TimerPanel";
 import NotebookEditor, {
   type NotebookEditorHandle,
 } from "../components/NotebookEditor";
+import AutoScrollText from "../components/AutoScrollText";
 import { useDialog } from "../components/DialogModal";
 import {
   assignmentScheduleEntry,
@@ -660,10 +661,14 @@ function SubjectWorkspace({
                 >
                   <ArrowLeft size={16} /> Cadernos
                 </button>
-                <div className="notebook-aside-title">
-                  <h3>
-                    {notebooks.find((item) => item.id === openNotebook)?.title}
-                  </h3>
+                <div className="notebook-aside-title hover-scroll-parent">
+                  <AutoScrollText
+                    as="h3"
+                    text={
+                      notebooks.find((item) => item.id === openNotebook)
+                        ?.title ?? ""
+                    }
+                  />
                   <button
                     onClick={() => renameNotebook(openNotebook)}
                     aria-label="Renomear caderno"
@@ -683,12 +688,12 @@ function SubjectWorkspace({
                   .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
                   .map((note) => (
                     <button
-                      className={openNote === note.id ? "active" : ""}
+                      className={`hover-scroll-parent ${openNote === note.id ? "active" : ""}`}
                       onClick={() => setOpenNote(note.id)}
                       key={note.id}
                     >
                       <FileText size={15} />
-                      <span>{note.title}</span>
+                      <AutoScrollText text={note.title} />
                     </button>
                   ))}
                 <button
@@ -760,7 +765,10 @@ function SubjectWorkspace({
           ) : (
             <div className="notebook-grid">
               {notebooks.map((notebook) => (
-                <article className="notebook-card" key={notebook.id}>
+                <article
+                  className="notebook-card hover-scroll-parent"
+                  key={notebook.id}
+                >
                   <button
                     className="notebook-card-main"
                     onClick={() => {
@@ -776,7 +784,7 @@ function SubjectWorkspace({
                   >
                     <NotebookPen />
                     <div>
-                      <strong>{notebook.title}</strong>
+                      <AutoScrollText as="strong" text={notebook.title} />
                       <small>
                         {
                           notes.filter(
@@ -921,12 +929,12 @@ function SubjectWorkspace({
       <nav className="subject-breadcrumb" aria-label="Caminho atual">
         <button onClick={() => setTab("overview")}>{subject.title}</button>
         {detailTrail.map((segment, index) => (
-          <span key={`${segment}-${index}`}>
+          <span key={`${segment}-${index}`} className="hover-scroll-parent">
             <ChevronRight />
             {index === 0 ? (
               <button onClick={() => setTab(tab)}>{segment}</button>
             ) : (
-              <em>{segment}</em>
+              <AutoScrollText as="em" text={segment} />
             )}
           </span>
         ))}

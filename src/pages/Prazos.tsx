@@ -9,6 +9,7 @@ import {
 import type { Assignment, AppData } from "../data";
 import { assignmentScheduleEntry, LIMITS, subjectName } from "../data";
 import { useDialog } from "../components/DialogModal";
+import AutoScrollText from "../components/AutoScrollText";
 
 type Props = {
   data: AppData;
@@ -284,7 +285,7 @@ export default function Prazos({ data, mutate }: Props) {
             {assignments.map((item) => (
               <article
                 key={item.id}
-                className={`assignment-row ${item.completed ? "completed" : ""}`}
+                className={`assignment-row hover-scroll-parent ${item.completed ? "completed" : ""}`}
               >
                 <button
                   className="check-button"
@@ -297,7 +298,7 @@ export default function Prazos({ data, mutate }: Props) {
                   {item.completed && <CheckCircle2 size={17} />}
                 </button>
                 <div>
-                  <strong>{item.title}</strong>
+                  <AutoScrollText as="strong" text={item.title} />
                   <small>
                     {subjectName(data, item.subjectId)} ·{" "}
                     {item.description || "Sem descrição"}

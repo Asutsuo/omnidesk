@@ -28,6 +28,7 @@ import {
   type HomeShortcut,
 } from "../data";
 import { downloadBackup } from "../storage";
+import AutoScrollText from "../components/AutoScrollText";
 
 type Props = {
   data: AppData;
@@ -415,12 +416,16 @@ function Home({ data, onNavigate, onOpenSubject, mutate }: Props) {
           </div>
           <div className="home-deadlines">
             {pending.slice(0, 3).map((item) => (
-              <button onClick={() => onNavigate("prazos")} key={item.id}>
+              <button
+                className="hover-scroll-parent"
+                onClick={() => onNavigate("prazos")}
+                key={item.id}
+              >
                 <span className="stat-icon orange">
                   <BriefcaseBusiness />
                 </span>
                 <span>
-                  <strong>{item.title}</strong>
+                  <AutoScrollText as="strong" text={item.title} />
                   <small>
                     {subjectName(data, item.subjectId)} ·{" "}
                     {formatDate(item.dueDate)}

@@ -106,18 +106,22 @@
   gap: 14px;
   padding: 18px;
   border: 1px solid var(--border-color);
-  border-radius: 13px;
-  background: #fff;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--card-shadow);
 }
 .stat-icon {
   display: grid;
   place-items: center;
   width: 43px;
   height: 43px;
-  border-radius: 11px;
+  border-radius: 10px;
+  flex-shrink: 0;
 }
 .stat-icon svg {
   width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 .stat-icon.orange {
   background: #fce9dd;
@@ -1870,7 +1874,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   border: 1px solid var(--border-color);
-  border-radius: 13px;
+  border-radius: 14px;
   background: var(--surface);
   box-shadow: var(--card-shadow);
   transition: 0.2s;
@@ -1892,6 +1896,7 @@
 }
 .notebook-card-main > svg:first-child {
   flex: 0 0 auto;
+  flex-shrink: 0;
   color: var(--subject-color);
 }
 .notebook-card-main > div {
@@ -1929,9 +1934,13 @@
   background: transparent;
   color: var(--item-color);
   cursor: pointer;
+  flex-shrink: 0;
 }
-.notebook-card-actions svg {
+.notebook-card-actions svg,
+.notebook-aside-title svg {
   width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 .notebook-card-actions button:hover,
 .notebook-aside-title button:hover {
@@ -1963,31 +1972,49 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   margin: 15px 0 8px;
+  min-width: 0;
 }
-.notebook-aside-title h3 {
+.notebook-aside-title h3,
+.notebook-aside-title .autoscroll-container {
   overflow: hidden;
   margin: 0 !important;
   font-family: "Fraunces";
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 .notebook-workspace aside > button:not(.text-button) {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 9px;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  padding: 8px 10px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   background: transparent;
   color: var(--item-color);
   font-size: 13px;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
+.notebook-workspace aside > button:not(.text-button):hover:not(.active) {
+  background: var(--hover-nav-color);
+  color: var(--text);
+}
+.notebook-workspace aside > button svg {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+}
+.notebook-workspace aside > button .autoscroll-container,
 .notebook-workspace aside > button span {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2176,8 +2203,8 @@
 .checklist-card {
   overflow: hidden;
   border: 1px solid var(--border-color);
-  border-radius: 14px;
-  background: #fff;
+  border-radius: 15px;
+  background: var(--surface);
   box-shadow: 0 4px 18px rgba(30, 45, 76, 0.035);
   transition:
     transform 0.2s,
@@ -2205,11 +2232,14 @@
   width: 42px;
   height: 42px;
   border-radius: 11px;
-  background: #eef2f0;
+  background: var(--surface-muted);
   color: var(--default-color);
+  flex-shrink: 0;
 }
 .checklist-card-icon svg {
   width: 21px;
+  height: 21px;
+  flex-shrink: 0;
 }
 .checklist-card > button > div {
   display: grid;
@@ -2236,6 +2266,8 @@
 }
 .checklist-card > button > svg {
   width: 17px;
+  height: 17px;
+  flex-shrink: 0;
   color: var(--item-color);
 }
 .checklist-editor {
@@ -3817,6 +3849,10 @@
   align-items: start;
   gap: 13px;
   padding: 18px;
+  border-radius: 15px;
+  border: 1px solid var(--border-color);
+  background: var(--surface);
+  box-shadow: var(--card-shadow);
   transition: 0.2s;
 }
 .resource-card:hover {
@@ -3831,9 +3867,12 @@
   border-radius: 10px;
   background: var(--surface-muted);
   color: var(--detail-color);
+  flex-shrink: 0;
 }
 .resource-icon svg {
   width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 .resource-video {
   color: #c26e66;
@@ -6153,9 +6192,12 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 .slide-note-picker button svg {
   width: 12px;
+  height: 12px;
+  flex-shrink: 0;
   color: var(--success);
 }
 .slide-note-picker button.selected {
@@ -7314,10 +7356,13 @@
 .subject-breadcrumb svg {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
   color: var(--item-color);
 }
-.subject-breadcrumb em {
-  max-width: 210px;
+.subject-breadcrumb em,
+.subject-breadcrumb .autoscroll-container {
+  max-width: 240px;
+  min-width: 0;
   overflow: hidden;
   color: var(--item-color);
   font-size: 12px;
@@ -9493,4 +9538,47 @@
   .timer-workspace {
     min-height: auto;
   }
+}
+
+/* Autoscroll Marquee for long text on hover */
+@keyframes autoScrollMarquee {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(0);
+  }
+  80% {
+    transform: translateX(var(--scroll-dist, 0px));
+  }
+  100% {
+    transform: translateX(var(--scroll-dist, 0px));
+  }
+}
+
+.autoscroll-container {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  position: relative;
+}
+
+.autoscroll-content {
+  display: inline-block;
+  white-space: nowrap;
+  vertical-align: bottom;
+  will-change: transform;
+}
+
+.autoscroll-container[data-overflow="true"]:hover,
+.hover-scroll-parent:hover .autoscroll-container[data-overflow="true"] {
+  text-overflow: clip;
+}
+
+.autoscroll-container[data-overflow="true"]:hover .autoscroll-content,
+.hover-scroll-parent:hover .autoscroll-container[data-overflow="true"] .autoscroll-content {
+  animation: autoScrollMarquee var(--scroll-duration, 3.5s) ease-in-out infinite alternate;
 }

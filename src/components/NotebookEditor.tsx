@@ -119,6 +119,7 @@ function buildLiveDecorations(view: EditorView): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   const doc = view.state.doc;
   const sel = view.state.selection.main;
+  const hasFocus = view.hasFocus;
   const cursorFrom = sel.from;
   const cursorTo = sel.to;
 
@@ -130,7 +131,8 @@ function buildLiveDecorations(view: EditorView): DecorationSet {
     while (pos <= to && pos <= doc.length) {
       const line = doc.lineAt(pos);
       const lineText = line.text;
-      const isCursorOnLine = cursorFrom >= line.from && cursorTo <= line.to;
+      const isCursorOnLine =
+        hasFocus && cursorFrom >= line.from && cursorTo <= line.to;
 
       // 1. Headings: #, ##, ###
       const headingMatch = lineText.match(/^(#{1,6})\s/);
@@ -144,7 +146,7 @@ function buildLiveDecorations(view: EditorView): DecorationSet {
         if (!isCursorOnLine) {
           items.push({
             from: line.from,
-            to: line.from + level + 1,
+            to: line.from + headingMatch[0].length,
             dec: Decoration.replace({}),
           });
         }
@@ -171,7 +173,8 @@ function buildLiveDecorations(view: EditorView): DecorationSet {
       while ((m = TOKEN_REGEX.exec(lineText)) !== null) {
         const start = lineOffset + m.index;
         const end = start + m[0].length;
-        const isCursorInside = cursorTo >= start && cursorFrom <= end;
+        const isCursorInside =
+          hasFocus && cursorTo >= start && cursorFrom <= end;
 
         // Math: [[math:...]], $$...$$, $...$
         if (m[2] !== undefined || m[3] !== undefined || m[4] !== undefined) {
@@ -301,7 +304,13 @@ const livePreviewPlugin = ViewPlugin.fromClass(
       this.decorations = buildLiveDecorations(view);
     }
     update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+      if (
+        update.docChanged ||
+        update.selectionSet ||
+        update.viewportChanged ||
+        update.focusChanged ||
+        update.geometryChanged
+      ) {
         this.decorations = buildLiveDecorations(update.view);
       }
     }
